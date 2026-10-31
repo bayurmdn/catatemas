@@ -18,6 +18,9 @@
     --card: #ffffff;
     --up: #1a7f37;
     --down: #c62828;
+    /* System bar insets (CSS px), set by the Android app; env() as fallback. */
+    --sat: env(safe-area-inset-top, 0px);
+    --wrap: 960px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
@@ -26,12 +29,14 @@
     background: var(--bg);
     color: var(--ink);
     font-size: 15px;
-    padding-bottom: 96px;
+    padding-bottom: 100px;
+    overflow-x: hidden;
   }
+  .wrap { max-width: var(--wrap); margin: 0 auto; }
   .hero {
     background: linear-gradient(140deg, var(--gold-900), var(--gold-700) 45%, var(--gold-500));
     color: #fff;
-    padding: 18px 16px 22px;
+    padding: calc(var(--sat) + 14px) 16px 22px;
     border-radius: 0 0 22px 22px;
   }
   .hero-top { display: flex; justify-content: space-between; align-items: center; }
@@ -45,7 +50,7 @@
   .icon-btn.spin svg { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .label { font-size: 13px; opacity: .85; margin-top: 18px; }
-  .total { font-size: 34px; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; word-break: break-word; }
+  .total { font-size: clamp(28px, 9vw, 44px); line-height: 1.15; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; word-break: break-word; }
   .sub { font-size: 14px; opacity: .92; }
   .chip {
     display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px;
@@ -57,6 +62,7 @@
   .warn { margin-top: 8px; font-size: 12px; background: rgba(0,0,0,.18); padding: 6px 10px; border-radius: 10px; }
 
   main { padding: 0 16px; }
+  .cols { display: grid; grid-template-columns: 1fr; column-gap: 14px; align-items: start; }
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 16px;
     padding: 14px; margin-top: 14px;
@@ -79,17 +85,20 @@
   .empty { text-align: center; color: var(--muted); padding: 22px 8px; line-height: 1.5; }
 
   .fab {
-    position: fixed; right: 16px; bottom: 20px; left: 16px;
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: min(calc(100% - 32px), 520px); z-index: 5;
     height: 54px; border: 0; border-radius: 16px; font-size: 16px; font-weight: 700;
     background: var(--gold-700); color: #fff; box-shadow: 0 6px 18px rgba(92,67,0,.35);
   }
   .fab:active { background: var(--gold-900); }
+  .hidden { display: none !important; }
 
   .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; z-index: 10; }
   .sheet {
-    position: fixed; left: 0; right: 0; bottom: 0; background: #fff; z-index: 11;
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: min(100%, 600px); background: #fff; z-index: 11;
     border-radius: 20px 20px 0 0; padding: 18px 16px 20px; display: none;
-    max-height: 88vh; overflow-y: auto;
+    max-height: calc(100% - var(--sat) - 16px); overflow-y: auto; overscroll-behavior: contain;
   }
   .sheet.open, .sheet-bg.open { display: block; }
   .sheet h3 { margin: 0 0 14px; font-size: 18px; }
@@ -117,16 +126,36 @@
   .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
   .preview { background: var(--gold-100); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
   .toast {
-    position: fixed; left: 50%; top: 16px; transform: translateX(-50%); background: #222; color: #fff;
+    position: fixed; left: 50%; top: calc(var(--sat) + 12px); transform: translateX(-50%); background: #222; color: #fff;
     padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 20; display: none; max-width: 90vw; text-align: center;
   }
   .footer { text-align: center; padding: 18px 8px 6px; }
+  /* Wide screens: Galaxy Z Fold inner display, tablets, landscape. */
+  @media (min-width: 700px) {
+    body { font-size: 16px; }
+    main, .hero { padding-left: 24px; padding-right: 24px; }
+    .cols { grid-template-columns: 1fr 1fr; }
+    .hero-body { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+    .hero-body .updated { text-align: right; }
+    .actions .btn { height: 50px; }
+  }
+  /* Very narrow screens (e.g. folded cover display at large font scale). */
+  @media (max-width: 340px) {
+    main, .hero { padding-left: 12px; padding-right: 12px; }
+    .seg button { font-size: 12px; }
+    .icon-btn span { display: none; }
+  }
+  /* Short landscape: keep forms usable. */
+  @media (max-height: 480px) {
+    .sheet { padding-top: 12px; }
+    .sheet h3 { margin-bottom: 8px; }
+  }
   .link-btn { background: none; border: 0; color: var(--gold-700); font-weight: 600; font-size: 14px; padding: 8px; }
 </style>
 </head>
 <body>
 
-<section class="hero">
+<section class="hero"><div class="wrap">
   <div class="hero-top">
     <div class="app-name">Catat Emas</div>
     <button class="icon-btn" id="btnRefresh" aria-label="Perbarui harga">
@@ -134,15 +163,19 @@
       <span>Perbarui</span>
     </button>
   </div>
-  <div class="label">Total nilai emas kamu</div>
-  <div class="total" id="total">Rp 0</div>
-  <div class="sub" id="totalGram">0 gram</div>
-  <div id="change"></div>
-  <div class="updated" id="updated">Belum ada data harga</div>
+  <div class="hero-body">
+    <div>
+      <div class="label">Total nilai emas kamu</div>
+      <div class="total" id="total">Rp 0</div>
+      <div class="sub" id="totalGram">0 gram</div>
+      <div id="change"></div>
+    </div>
+    <div class="updated" id="updated">Belum ada data harga</div>
+  </div>
   <div id="warn"></div>
-</section>
+</div></section>
 
-<main>
+<main class="wrap">
   <div class="card">
     <h2>Harga acuan (spot dunia)</h2>
     <div class="spot-row">
@@ -152,6 +185,7 @@
     <div class="small" id="spotDetail" style="margin-top:6px"></div>
   </div>
 
+  <div class="cols">
   <div class="card">
     <h2>Per merek</h2>
     <div id="brandList"></div>
@@ -161,6 +195,7 @@
   <div class="card">
     <h2>Catatan emas</h2>
     <div id="itemList"></div>
+  </div>
   </div>
 
   <div class="footer">
@@ -247,8 +282,16 @@
   var SUGGESTED_BRANDS = ['Antam', 'UBS', 'Galeri24', 'Lotus Archi', 'King Halim', 'Hartadinata', 'EOA Gold', 'Perhiasan'];
   var SUGGESTED_GRAMS = [0.5, 1, 2, 5, 10, 25, 50, 100];
 
-  // ---------- Storage ----------
+  // ---------- Insets (edge-to-edge on Android 15+) ----------
   var hasNative = typeof window.Native !== 'undefined';
+  window.__setTopInset = function (px) {
+    if (typeof px === 'number' && px >= 0) document.documentElement.style.setProperty('--sat', px + 'px');
+  };
+  if (hasNative && window.Native.topInset) {
+    try { window.__setTopInset(Number(window.Native.topInset())); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- Storage ----------
   function defaultState() {
     return { items: [], brands: {}, price: null, history: [] };
   }
