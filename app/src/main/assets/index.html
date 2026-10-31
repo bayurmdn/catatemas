@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Catat Emas</title>
+<style>
+  :root {
+    --gold-900: #5c4300;
+    --gold-700: #7a5a00;
+    --gold-500: #c9970c;
+    --gold-300: #f3d77a;
+    --gold-100: #fff6dc;
+    --ink: #1d1a14;
+    --muted: #6d665a;
+    --line: #ece6d8;
+    --bg: #faf8f3;
+    --card: #ffffff;
+    --up: #1a7f37;
+    --down: #c62828;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    padding-bottom: 96px;
+  }
+  .hero {
+    background: linear-gradient(140deg, var(--gold-900), var(--gold-700) 45%, var(--gold-500));
+    color: #fff;
+    padding: 18px 16px 22px;
+    border-radius: 0 0 22px 22px;
+  }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; }
+  .app-name { font-weight: 700; font-size: 17px; letter-spacing: .2px; }
+  .icon-btn {
+    background: rgba(255,255,255,.16); color: #fff; border: 0; border-radius: 12px;
+    height: 38px; min-width: 38px; padding: 0 12px; font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .icon-btn:active { background: rgba(255,255,255,.28); }
+  .icon-btn.spin svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .label { font-size: 13px; opacity: .85; margin-top: 18px; }
+  .total { font-size: 34px; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; word-break: break-word; }
+  .sub { font-size: 14px; opacity: .92; }
+  .chip {
+    display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.18); font-size: 13px; font-weight: 600;
+  }
+  .chip.up { background: #e6f4ea; color: var(--up); }
+  .chip.down { background: #fdecea; color: var(--down); }
+  .updated { margin-top: 10px; font-size: 12px; opacity: .85; }
+  .warn { margin-top: 8px; font-size: 12px; background: rgba(0,0,0,.18); padding: 6px 10px; border-radius: 10px; }
+
+  main { padding: 0 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px; margin-top: 14px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .spot-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .spot-price { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .small { font-size: 12px; color: var(--muted); }
+  .row {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 11px 0; border-top: 1px solid var(--line);
+  }
+  .row:first-of-type { border-top: 0; }
+  .row.tap:active { background: var(--gold-100); }
+  .row .l { min-width: 0; }
+  .row .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .r { text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .row .val { font-weight: 700; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--gold-100); color: var(--gold-700); font-weight: 600; margin-left: 4px; vertical-align: 1px; }
+  .empty { text-align: center; color: var(--muted); padding: 22px 8px; line-height: 1.5; }
+
+  .fab {
+    position: fixed; right: 16px; bottom: 20px; left: 16px;
+    height: 54px; border: 0; border-radius: 16px; font-size: 16px; font-weight: 700;
+    background: var(--gold-700); color: #fff; box-shadow: 0 6px 18px rgba(92,67,0,.35);
+  }
+  .fab:active { background: var(--gold-900); }
+
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; z-index: 10; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; background: #fff; z-index: 11;
+    border-radius: 20px 20px 0 0; padding: 18px 16px 20px; display: none;
+    max-height: 88vh; overflow-y: auto;
+  }
+  .sheet.open, .sheet-bg.open { display: block; }
+  .sheet h3 { margin: 0 0 14px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .field input, .field textarea {
+    width: 100%; font-size: 17px; padding: 12px; border: 1.5px solid var(--line); border-radius: 12px;
+    background: #fff; color: var(--ink); font-family: inherit;
+  }
+  .field textarea { font-size: 12px; min-height: 120px; font-family: ui-monospace, monospace; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--gold-500); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chips button {
+    border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 7px 12px; font-size: 13px; color: var(--ink);
+  }
+  .chips button.sel { background: var(--gold-100); border-color: var(--gold-500); color: var(--gold-900); font-weight: 600; }
+  .seg { display: flex; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: #fff; padding: 10px 4px; font-size: 13px; color: var(--ink); }
+  .seg button.sel { background: var(--gold-700); color: #fff; font-weight: 600; }
+  .actions { display: flex; gap: 10px; margin-top: 6px; }
+  .btn { flex: 1; height: 48px; border-radius: 12px; border: 0; font-size: 15px; font-weight: 700; }
+  .btn.primary { background: var(--gold-700); color: #fff; }
+  .btn.ghost { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+  .btn.danger { background: #fdecea; color: var(--down); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+  .preview { background: var(--gold-100); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
+  .toast {
+    position: fixed; left: 50%; top: 16px; transform: translateX(-50%); background: #222; color: #fff;
+    padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 20; display: none; max-width: 90vw; text-align: center;
+  }
+  .footer { text-align: center; padding: 18px 8px 6px; }
+  .link-btn { background: none; border: 0; color: var(--gold-700); font-weight: 600; font-size: 14px; padding: 8px; }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-top">
+    <div class="app-name">Catat Emas</div>
+    <button class="icon-btn" id="btnRefresh" aria-label="Perbarui harga">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      <span>Perbarui</span>
+    </button>
+  </div>
+  <div class="label">Total nilai emas kamu</div>
+  <div class="total" id="total">Rp 0</div>
+  <div class="sub" id="totalGram">0 gram</div>
+  <div id="change"></div>
+  <div class="updated" id="updated">Belum ada data harga</div>
+  <div id="warn"></div>
+</section>
+
+<main>
+  <div class="card">
+    <h2>Harga acuan (spot dunia)</h2>
+    <div class="spot-row">
+      <div class="spot-price" id="spot">–</div>
+      <div class="small">per gram, 24K</div>
+    </div>
+    <div class="small" id="spotDetail" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Per merek</h2>
+    <div id="brandList"></div>
+    <div class="hint">Ketuk merek untuk mengatur harga per gram (mis. harga jual/buyback merek itu).</div>
+  </div>
+
+  <div class="card">
+    <h2>Catatan emas</h2>
+    <div id="itemList"></div>
+  </div>
+
+  <div class="footer">
+    <button class="link-btn" id="btnBackup">Cadangkan / Pulihkan data</button>
+  </div>
+</main>
+
+<button class="fab" id="btnAdd">+ Tambah Emas</button>
+
+<div class="sheet-bg" id="sheetBg"></div>
+
+<!-- Add / edit item -->
+<div class="sheet" id="sheetItem">
+  <h3 id="itemTitle">Tambah emas</h3>
+  <div class="field">
+    <label for="inBrand">Merek</label>
+    <input id="inBrand" type="text" placeholder="mis. Antam" autocomplete="off" autocapitalize="words">
+    <div class="chips" id="brandChips"></div>
+  </div>
+  <div class="field">
+    <label for="inGram">Berat (gram)</label>
+    <input id="inGram" type="text" inputmode="decimal" placeholder="mis. 5 atau 0,5">
+    <div class="chips" id="gramChips"></div>
+  </div>
+  <div class="preview" id="itemPreview" style="display:none"></div>
+  <div class="actions">
+    <button class="btn danger" id="btnDelete" style="display:none">Hapus</button>
+    <button class="btn ghost" data-close>Batal</button>
+    <button class="btn primary" id="btnSaveItem">Simpan</button>
+  </div>
+</div>
+
+<!-- Brand price settings -->
+<div class="sheet" id="sheetBrand">
+  <h3 id="brandTitle">Harga merek</h3>
+  <div class="field">
+    <label>Cara hitung harga per gram</label>
+    <div class="seg" id="modeSeg">
+      <button data-mode="spot">Spot dunia</button>
+      <button data-mode="pct">Spot ± %</button>
+      <button data-mode="manual">Manual (Rp)</button>
+    </div>
+  </div>
+  <div class="field" id="fieldPct">
+    <label for="inPct">Selisih dari harga spot (%)</label>
+    <input id="inPct" type="text" inputmode="decimal" placeholder="mis. 8 atau -3">
+    <div class="hint">Positif = lebih mahal dari spot (umum untuk harga jual logam mulia bermerek). Negatif = lebih murah (mis. harga buyback). Tetap ikut naik-turun harga spot otomatis.</div>
+  </div>
+  <div class="field" id="fieldManual">
+    <label for="inManual">Harga per gram (Rp)</label>
+    <input id="inManual" type="text" inputmode="numeric" placeholder="mis. 2.450.000">
+    <div class="hint">Harga tetap; tidak ikut berubah otomatis. Perbarui sendiri bila merek mengubah harganya.</div>
+  </div>
+  <div class="preview" id="brandPreview"></div>
+  <div class="actions">
+    <button class="btn ghost" data-close>Batal</button>
+    <button class="btn primary" id="btnSaveBrand">Simpan</button>
+  </div>
+</div>
+
+<!-- Backup -->
+<div class="sheet" id="sheetBackup">
+  <h3>Cadangkan / Pulihkan</h3>
+  <div class="field">
+    <label for="inBackup">Data (JSON)</label>
+    <textarea id="inBackup" spellcheck="false"></textarea>
+    <div class="hint">Untuk mencadangkan: salin teks di atas dan simpan (mis. di catatan/WhatsApp ke diri sendiri). Untuk memulihkan: tempel teks cadangan lalu ketuk "Pulihkan".</div>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" id="btnCopy">Salin</button>
+    <button class="btn primary" id="btnRestore">Pulihkan</button>
+  </div>
+  <div class="actions"><button class="btn ghost" data-close>Tutup</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var TROY_OZ_GRAM = 31.1034768;
+  var STORAGE_KEY = 'catatemas.v1';
+  var SUGGESTED_BRANDS = ['Antam', 'UBS', 'Galeri24', 'Lotus Archi', 'King Halim', 'Hartadinata', 'EOA Gold', 'Perhiasan'];
+  var SUGGESTED_GRAMS = [0.5, 1, 2, 5, 10, 25, 50, 100];
+
+  // ---------- Storage ----------
+  var hasNative = typeof window.Native !== 'undefined';
+  function defaultState() {
+    return { items: [], brands: {}, price: null, history: [] };
+  }
+  function loadState() {
+    try {
+      var raw = hasNative ? window.Native.load() : localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultState();
+      var s = JSON.parse(raw);
+      var d = defaultState();
+      for (var k in d) if (!(k in s)) s[k] = d[k];
+      return s;
+    } catch (e) {
+      return defaultState();
+    }
+  }
+  function saveState() {
+    var raw = JSON.stringify(state);
+    try {
+      if (hasNative) window.Native.save(raw); else localStorage.setItem(STORAGE_KEY, raw);
+    } catch (e) { /* ignore */ }
+  }
+  var state = loadState();
+
+  // ---------- HTTP ----------
+  var pending = {}, seq = 0;
+  window.__nativeCb = function (id, ok, body) {
+    var p = pending[id]; if (!p) return;
+    delete pending[id];
+    if (ok) { try { p.resolve(JSON.parse(body)); } catch (e) { p.reject(e); } }
+    else p.reject(new Error(body));
+  };
+  function getJSON(url) {
+    if (hasNative) {
+      return new Promise(function (resolve, reject) {
+        var id = 'r' + (++seq);
+        pending[id] = { resolve: resolve, reject: reject };
+        window.Native.httpGet(id, url);
+      });
+    }
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+  function firstOk(fns) {
+    var i = 0;
+    function next(lastErr) {
+      if (i >= fns.length) return Promise.reject(lastErr || new Error('Semua sumber gagal'));
+      var fn = fns[i++];
+      return fn().catch(next);
+    }
+    return next();
+  }
+
+  function fetchGoldUsd() {
+    return firstOk([
+      function () {
+        return getJSON('https://api.gold-api.com/price/XAU').then(function (d) {
+          var p = Number(d.price);
+          if (!(p > 0)) throw new Error('Harga emas tidak valid');
+          return { usdPerOz: p, at: d.updatedAt || new Date().toISOString(), src: 'gold-api.com' };
+        });
+      }
+    ]);
+  }
+  function fetchUsdIdr() {
+    return firstOk([
+      function () {
+        return getJSON('https://open.er-api.com/v6/latest/USD').then(function (d) {
+          var r = d && d.rates && Number(d.rates.IDR);
+          if (!(r > 0)) throw new Error('Kurs tidak valid');
+          return { rate: r, src: 'open.er-api.com' };
+        });
+      },
+      function () {
+        return getJSON('https://api.frankfurter.dev/v1/latest?from=USD&to=IDR').then(function (d) {
+          var r = d && d.rates && Number(d.rates.IDR);
+          if (!(r > 0)) throw new Error('Kurs tidak valid');
+          return { rate: r, src: 'frankfurter.dev' };
+        });
+      }
+    ]);
+  }
+
+  var refreshing = false, lastError = '';
+  function refresh(silent) {
+    if (refreshing) return;
+    refreshing = true; lastError = '';
+    $('btnRefresh').classList.add('spin');
+    Promise.all([fetchGoldUsd(), fetchUsdIdr()]).then(function (res) {
+      var g = res[0], fx = res[1];
+      state.price = {
+        usdPerOz: g.usdPerOz,
+        usdIdr: fx.rate,
+        perGram: g.usdPerOz * fx.rate / TROY_OZ_GRAM,
+        updatedAt: new Date().toISOString(),
+        source: g.src + ' & ' + fx.src
+      };
+      recordHistory();
+      saveState();
+      if (!silent) toast('Harga diperbarui');
+    }).catch(function (e) {
+      lastError = (e && e.message) || 'Gagal memuat harga';
+      if (!silent) toast('Gagal memperbarui harga. Cek koneksi internet.');
+    }).then(function () {
+      refreshing = false;
+      $('btnRefresh').classList.remove('spin');
+      render();
+    });
+  }
+
+  // One snapshot per calendar day (the latest of that day), used for "perubahan sejak".
+  function dayKey(iso) {
+    var d = new Date(iso);
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function recordHistory() {
+    var p = state.price; if (!p) return;
+    var snap = { t: p.updatedAt, perGram: p.perGram, total: totalValue() };
+    var h = state.history;
+    if (h.length && dayKey(h[h.length - 1].t) === dayKey(snap.t)) h[h.length - 1] = snap;
+    else h.push(snap);
+    if (h.length > 120) h.splice(0, h.length - 120);
+  }
+  function previousSnapshot() {
+    var h = state.history, p = state.price;
+    if (!p) return null;
+    var today = dayKey(p.updatedAt);
+    for (var i = h.length - 1; i >= 0; i--) if (dayKey(h[i].t) !== today) return h[i];
+    return null;
+  }
+
+  // ---------- Pricing ----------
+  function brandCfg(name) {
+    return state.brands[name] || { mode: 'spot' };
+  }
+  function pricePerGram(name, cfg) {
+    cfg = cfg || brandCfg(name);
+    var spot = state.price ? state.price.perGram : 0;
+    if (cfg.mode === 'manual' && cfg.manual > 0) return cfg.manual;
+    if (cfg.mode === 'pct' && isFinite(cfg.pct)) return spot * (1 + cfg.pct / 100);
+    return spot;
+  }
+  function priceAt(name, spot) {
+    var cfg = brandCfg(name);
+    if (cfg.mode === 'manual' && cfg.manual > 0) return cfg.manual;
+    if (cfg.mode === 'pct' && isFinite(cfg.pct)) return spot * (1 + cfg.pct / 100);
+    return spot;
+  }
+  function groupByBrand() {
+    var map = {}, order = [];
+    state.items.forEach(function (it) {
+      if (!map[it.brand]) { map[it.brand] = { brand: it.brand, gram: 0, count: 0 }; order.push(it.brand); }
+      map[it.brand].gram += it.gram;
+      map[it.brand].count++;
+    });
+    return order.map(function (b) { return map[b]; });
+  }
+  function totalGram() { return state.items.reduce(function (a, it) { return a + it.gram; }, 0); }
+  function totalValue() {
+    return groupByBrand().reduce(function (a, g) { return a + g.gram * pricePerGram(g.brand); }, 0);
+  }
+  function totalValueAtSpot(spot) {
+    return groupByBrand().reduce(function (a, g) { return a + g.gram * priceAt(g.brand, spot); }, 0);
+  }
+
+  // ---------- Formatting ----------
+  function rp(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+  function grams(n) { return (+n.toFixed(4)).toLocaleString('id-ID', { maximumFractionDigits: 4 }) + ' gram'; }
+  function num(n, d) { return Number(n).toLocaleString('id-ID', { maximumFractionDigits: d }); }
+  function when(iso) {
+    var d = new Date(iso);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' +
+      d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
+  function ago(iso) {
+    var s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (s < 60) return 'baru saja';
+    if (s < 3600) return Math.floor(s / 60) + ' menit lalu';
+    if (s < 86400) return Math.floor(s / 3600) + ' jam lalu';
+    return Math.floor(s / 86400) + ' hari lalu';
+  }
+  // Accepts "2,5", "2.5", "2.450.000", "Rp 2.450.000"
+  function parseNum(str, integerish) {
+    if (str == null) return NaN;
+    var s = String(str).replace(/rp/ig, '').replace(/\s/g, '');
+    if (!s) return NaN;
+    if (integerish) return Number(s.replace(/[.,]/g, ''));
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    return Number(s);
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function $(id) { return document.getElementById(id); }
+
+  // ---------- Render ----------
+  function render() {
+    var p = state.price;
+    var tv = totalValue();
+    $('total').textContent = p ? rp(tv) : (state.items.length ? 'Memuat harga…' : 'Rp 0');
+    $('totalGram').textContent = grams(totalGram()) + ' · ' + state.items.length + ' catatan';
+
+    // change vs previous day
+    var ch = $('change'); ch.innerHTML = '';
+    var prev = previousSnapshot();
+    if (p && prev && state.items.length) {
+      var before = totalValueAtSpot(prev.perGram);
+      var diff = tv - before;
+      var pct = before > 0 ? diff / before * 100 : 0;
+      var cls = diff > 0.5 ? 'up' : diff < -0.5 ? 'down' : '';
+      var arrow = diff > 0.5 ? '▲' : diff < -0.5 ? '▼' : '•';
+      ch.innerHTML = '<span class="chip ' + cls + '">' + arrow + ' ' + (diff >= 0 ? '+' : '−') + rp(Math.abs(diff)).replace('Rp ', 'Rp ') +
+        ' (' + (pct >= 0 ? '+' : '−') + num(Math.abs(pct), 2) + '%) sejak ' +
+        new Date(prev.t).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + '</span>';
+    }
+
+    $('updated').textContent = p ? ('Harga diperbarui ' + when(p.updatedAt) + ' (' + ago(p.updatedAt) + ')') : 'Belum ada data harga';
+    $('warn').innerHTML = lastError ? '<div class="warn">Tidak bisa memuat harga terbaru' + (p ? ' — menampilkan harga terakhir yang tersimpan.' : '. Periksa koneksi internet lalu ketuk Perbarui.') + '</div>' : '';
+
+    $('spot').textContent = p ? rp(p.perGram) : '–';
+    $('spotDetail').textContent = p
+      ? ('XAU US$' + num(p.usdPerOz, 2) + '/troy oz × kurs Rp' + num(p.usdIdr, 2) + '/US$ ÷ 31,1035 g · Sumber: ' + p.source)
+      : 'Ketuk "Perbarui" untuk memuat harga.';
+
+    // brands
+    var groups = groupByBrand();
+    var bl = $('brandList');
+    if (!groups.length) {
+      bl.innerHTML = '<div class="empty">Belum ada merek.</div>';
+    } else {
+      bl.innerHTML = groups.map(function (g) {
+        var cfg = brandCfg(g.brand), ppg = pricePerGram(g.brand);
+        var tag = cfg.mode === 'manual' ? 'manual' : cfg.mode === 'pct' ? ('spot ' + (cfg.pct >= 0 ? '+' : '') + num(cfg.pct, 2) + '%') : 'spot';
+        return '<div class="row tap" data-brand="' + esc(g.brand) + '">' +
+          '<div class="l"><div class="name">' + esc(g.brand) + '<span class="tag">' + tag + '</span></div>' +
+          '<div class="small">' + grams(g.gram) + ' · ' + (ppg ? rp(ppg) + '/g' : '–') + '</div></div>' +
+          '<div class="r"><div class="val">' + (ppg ? rp(g.gram * ppg) : '–') + '</div></div></div>';
+      }).join('');
+    }
+
+    // items
+    var il = $('itemList');
+    if (!state.items.length) {
+      il.innerHTML = '<div class="empty">Belum ada catatan.<br>Ketuk <b>+ Tambah Emas</b> untuk mencatat merek dan beratnya.</div>';
+    } else {
+      il.innerHTML = state.items.slice().reverse().map(function (it) {
+        var ppg = pricePerGram(it.brand);
+        return '<div class="row tap" data-item="' + esc(it.id) + '">' +
+          '<div class="l"><div class="name">' + esc(it.brand) + ' · ' + grams(it.gram) + '</div>' +
+          '<div class="small">Dicatat ' + new Date(it.added).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div></div>' +
+          '<div class="r"><div class="val">' + (ppg ? rp(it.gram * ppg) : '–') + '</div></div></div>';
+      }).join('');
+    }
+  }
+
+  // ---------- Sheets ----------
+  var openSheetId = null;
+  function openSheet(id) {
+    closeSheet();
+    openSheetId = id;
+    $('sheetBg').classList.add('open');
+    $(id).classList.add('open');
+  }
+  function closeSheet() {
+    if (!openSheetId) return false;
+    $(openSheetId).classList.remove('open');
+    $('sheetBg').classList.remove('open');
+    openSheetId = null;
+    if (document.activeElement) document.activeElement.blur();
+    return true;
+  }
+  window.handleBack = function () { return closeSheet(); };
+  $('sheetBg').addEventListener('click', closeSheet);
+  document.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', closeSheet); });
+
+  // Item sheet
+  var editingId = null;
+  function knownBrands() {
+    var seen = {}, out = [];
+    state.items.forEach(function (it) { if (!seen[it.brand]) { seen[it.brand] = 1; out.push(it.brand); } });
+    SUGGESTED_BRANDS.forEach(function (b) { if (!seen[b]) { seen[b] = 1; out.push(b); } });
+    return out;
+  }
+  function renderItemChips() {
+    var cur = $('inBrand').value.trim().toLowerCase();
+    $('brandChips').innerHTML = knownBrands().map(function (b) {
+      return '<button type="button" data-b="' + esc(b) + '" class="' + (b.toLowerCase() === cur ? 'sel' : '') + '">' + esc(b) + '</button>';
+    }).join('');
+    var g = parseNum($('inGram').value);
+    $('gramChips').innerHTML = SUGGESTED_GRAMS.map(function (x) {
+      return '<button type="button" data-g="' + x + '" class="' + (g === x ? 'sel' : '') + '">' + num(x, 2) + ' g</button>';
+    }).join('');
+    updateItemPreview();
+  }
+  function normalizeBrand(name) {
+    var t = name.trim().replace(/\s+/g, ' ');
+    var match = knownBrands().filter(function (b) { return b.toLowerCase() === t.toLowerCase(); })[0];
+    return match || t;
+  }
+  function updateItemPreview() {
+    var b = normalizeBrand($('inBrand').value), g = parseNum($('inGram').value);
+    var pv = $('itemPreview');
+    if (b && g > 0 && state.price) {
+      var ppg = pricePerGram(b);
+      pv.style.display = 'block';
+      pv.innerHTML = 'Perkiraan nilai: <b>' + rp(g * ppg) + '</b><br><span class="small">' + rp(ppg) + '/gram (' + (state.brands[b] ? 'harga merek' : 'harga spot') + ')</span>';
+    } else pv.style.display = 'none';
+  }
+  $('brandChips').addEventListener('click', function (e) {
+    var b = e.target.getAttribute('data-b'); if (!b) return;
+    $('inBrand').value = b; renderItemChips();
+  });
+  $('gramChips').addEventListener('click', function (e) {
+    var g = e.target.getAttribute('data-g'); if (!g) return;
+    $('inGram').value = num(Number(g), 2); renderItemChips();
+  });
+  $('inBrand').addEventListener('input', renderItemChips);
+  $('inGram').addEventListener('input', renderItemChips);
+
+  function openItem(id) {
+    editingId = id || null;
+    var it = id ? state.items.filter(function (x) { return x.id === id; })[0] : null;
+    $('itemTitle').textContent = it ? 'Ubah catatan' : 'Tambah emas';
+    $('inBrand').value = it ? it.brand : '';
+    $('inGram').value = it ? num(it.gram, 4) : '';
+    $('btnDelete').style.display = it ? 'block' : 'none';
+    renderItemChips();
+    openSheet('sheetItem');
+    if (!it) setTimeout(function () { $('inBrand').focus(); }, 50);
+  }
+  $('btnAdd').addEventListener('click', function () { openItem(null); });
+  $('btnSaveItem').addEventListener('click', function () {
+    var b = normalizeBrand($('inBrand').value);
+    var g = parseNum($('inGram').value);
+    if (!b) { toast('Isi merek emas dulu'); $('inBrand').focus(); return; }
+    if (!(g > 0)) { toast('Isi berat dalam gram (lebih dari 0)'); $('inGram').focus(); return; }
+    if (editingId) {
+      state.items.forEach(function (x) { if (x.id === editingId) { x.brand = b; x.gram = g; } });
+    } else {
+      state.items.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), brand: b, gram: g, added: new Date().toISOString() });
+    }
+    cleanupBrands();
+    recordHistory();
+    saveState(); closeSheet(); render();
+    toast(editingId ? 'Catatan diperbarui' : 'Emas dicatat');
+  });
+  $('btnDelete').addEventListener('click', function () {
+    if (!editingId) return;
+    if (!confirm('Hapus catatan ini?')) return;
+    state.items = state.items.filter(function (x) { return x.id !== editingId; });
+    cleanupBrands();
+    recordHistory();
+    saveState(); closeSheet(); render(); toast('Catatan dihapus');
+  });
+  function cleanupBrands() {
+    var used = {};
+    state.items.forEach(function (it) { used[it.brand] = 1; });
+    Object.keys(state.brands).forEach(function (b) { if (!used[b]) delete state.brands[b]; });
+  }
+
+  // Brand sheet
+  var editingBrand = null, brandMode = 'spot';
+  function setMode(m) {
+    brandMode = m;
+    document.querySelectorAll('#modeSeg button').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-mode') === m); });
+    $('fieldPct').style.display = m === 'pct' ? 'block' : 'none';
+    $('fieldManual').style.display = m === 'manual' ? 'block' : 'none';
+    updateBrandPreview();
+  }
+  function draftCfg() {
+    if (brandMode === 'pct') return { mode: 'pct', pct: parseNum($('inPct').value) };
+    if (brandMode === 'manual') return { mode: 'manual', manual: parseNum($('inManual').value, true) };
+    return { mode: 'spot' };
+  }
+  function updateBrandPreview() {
+    var cfg = draftCfg(), spot = state.price ? state.price.perGram : 0;
+    var ppg = 0;
+    if (cfg.mode === 'manual') ppg = cfg.manual > 0 ? cfg.manual : 0;
+    else if (cfg.mode === 'pct') ppg = isFinite(cfg.pct) ? spot * (1 + cfg.pct / 100) : 0;
+    else ppg = spot;
+    var g = groupByBrand().filter(function (x) { return x.brand === editingBrand; })[0];
+    $('brandPreview').innerHTML = ppg
+      ? ('Harga ' + esc(editingBrand) + ': <b>' + rp(ppg) + '/gram</b>' + (g ? '<br><span class="small">' + grams(g.gram) + ' = ' + rp(g.gram * ppg) + '</span>' : ''))
+      : '<span class="small">Lengkapi isian untuk melihat perkiraan.</span>';
+  }
+  document.querySelectorAll('#modeSeg button').forEach(function (b) {
+    b.addEventListener('click', function () { setMode(b.getAttribute('data-mode')); });
+  });
+  $('inPct').addEventListener('input', updateBrandPreview);
+  $('inManual').addEventListener('input', function () {
+    var n = parseNum($('inManual').value, true);
+    if (n > 0) $('inManual').value = n.toLocaleString('id-ID');
+    updateBrandPreview();
+  });
+  function openBrand(name) {
+    editingBrand = name;
+    var cfg = brandCfg(name);
+    $('brandTitle').textContent = 'Harga ' + name;
+    $('inPct').value = cfg.mode === 'pct' ? num(cfg.pct, 2) : '';
+    $('inManual').value = cfg.mode === 'manual' ? Math.round(cfg.manual).toLocaleString('id-ID') : '';
+    setMode(cfg.mode || 'spot');
+    openSheet('sheetBrand');
+  }
+  $('btnSaveBrand').addEventListener('click', function () {
+    var cfg = draftCfg();
+    if (cfg.mode === 'pct' && !isFinite(cfg.pct)) { toast('Isi selisih persen, mis. 8 atau -3'); return; }
+    if (cfg.mode === 'manual' && !(cfg.manual > 0)) { toast('Isi harga per gram'); return; }
+    if (cfg.mode === 'spot') delete state.brands[editingBrand]; else state.brands[editingBrand] = cfg;
+    recordHistory();
+    saveState(); closeSheet(); render(); toast('Harga ' + editingBrand + ' disimpan');
+  });
+
+  // Lists
+  $('brandList').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-brand]'); if (row) openBrand(row.getAttribute('data-brand'));
+  });
+  $('itemList').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-item]'); if (row) openItem(row.getAttribute('data-item'));
+  });
+
+  // Backup
+  $('btnBackup').addEventListener('click', function () {
+    $('inBackup').value = JSON.stringify({ app: 'catatemas', v: 1, items: state.items, brands: state.brands }, null, 1);
+    openSheet('sheetBackup');
+  });
+  $('btnCopy').addEventListener('click', function () {
+    var ta = $('inBackup'); ta.focus(); ta.select();
+    var done = false;
+    try { done = document.execCommand('copy'); } catch (e) { /* ignore */ }
+    if (navigator.clipboard && !done) navigator.clipboard.writeText(ta.value).then(function () { toast('Disalin'); }, function () { toast('Tekan lama teks untuk menyalin'); });
+    else toast(done ? 'Disalin' : 'Tekan lama teks untuk menyalin');
+  });
+  $('btnRestore').addEventListener('click', function () {
+    var d;
+    try { d = JSON.parse($('inBackup').value); } catch (e) { toast('Format data tidak valid'); return; }
+    if (!d || !Array.isArray(d.items)) { toast('Format data tidak valid'); return; }
+    var items = d.items.filter(function (x) { return x && x.brand && Number(x.gram) > 0; }).map(function (x) {
+      return { id: String(x.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6))), brand: String(x.brand), gram: Number(x.gram), added: x.added || new Date().toISOString() };
+    });
+    if (!confirm('Ganti semua data dengan ' + items.length + ' catatan dari cadangan?')) return;
+    state.items = items;
+    state.brands = (d.brands && typeof d.brands === 'object') ? d.brands : {};
+    cleanupBrands(); recordHistory();
+    saveState(); closeSheet(); render(); toast('Data dipulihkan');
+  });
+
+  // Toast
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.style.display = 'none'; }, 2200);
+  }
+
+  // ---------- Boot ----------
+  $('btnRefresh').addEventListener('click', function () { refresh(false); });
+  window.onAppResume = function () {
+    // auto refresh if older than 5 minutes
+    if (!state.price || Date.now() - new Date(state.price.updatedAt).getTime() > 5 * 60 * 1000) refresh(true);
+    else render();
+  };
+  render();
+  refresh(true);
+  setInterval(render, 60 * 1000); // keep "x menit lalu" fresh
+})();
+</script>
+</body>
+</html>

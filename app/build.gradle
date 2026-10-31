@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.bayurmdn.catatemas'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.bayurmdn.catatemas'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Signing material is NOT stored in the repo. It is read from the git-ignored
+    // keystore/ folder (catatemas.jks + signing.properties) or from environment
+    // variables (GitHub Actions secrets). Without it the release build uses the debug key.
+    def ksProps = new Properties()
+    def ksPropsFile = rootProject.file('keystore/signing.properties')
+    if (ksPropsFile.exists()) ksPropsFile.withInputStream { ksProps.load(it) }
+    def signingValue = { String env, String key -> System.getenv(env) ?: ksProps.getProperty(key) }
+    def ksFile = rootProject.file(signingValue('CATATEMAS_KEYSTORE', 'storeFile') ?: 'keystore/catatemas.jks')
+    def hasKs = ksFile.exists() && signingValue('CATATEMAS_STORE_PASSWORD', 'storePassword') != null
+
+    signingConfigs {
+        if (hasKs) {
+            release {
+                storeFile ksFile
+                storePassword signingValue('CATATEMAS_STORE_PASSWORD', 'storePassword')
+                keyAlias signingValue('CATATEMAS_KEY_ALIAS', 'keyAlias') ?: 'catatemas'
+                keyPassword signingValue('CATATEMAS_KEY_PASSWORD', 'keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig hasKs ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
