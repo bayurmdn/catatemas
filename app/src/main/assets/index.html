@@ -124,6 +124,18 @@
   .btn.ghost { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
   .btn.danger { background: #fdecea; color: var(--down); }
   .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+  .inline { display: flex; gap: 8px; }
+  .inline input { flex: 1; min-width: 0; }
+  .btn-add { flex-shrink: 0; border: 0; border-radius: 12px; padding: 0 14px; background: var(--gold-100); color: var(--gold-900); font-weight: 700; font-size: 15px; border: 1.5px solid var(--gold-300); }
+  .btn-add:active { background: var(--gold-300); }
+  .pieces { margin: -4px 0 14px; border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px; }
+  .piece { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .piece:first-child { border-top: 0; }
+  .piece .pv { font-variant-numeric: tabular-nums; }
+  .stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .stepper button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 18px; font-weight: 700; color: var(--ink); }
+  .stepper .n { min-width: 26px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .comp { margin-top: 2px; }
   .preview { background: var(--gold-100); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
   .toast {
     position: fixed; left: 50%; top: calc(var(--sat) + 12px); transform: translateX(-50%); background: #222; color: #fff;
@@ -193,7 +205,7 @@
   </div>
 
   <div class="card">
-    <h2>Catatan emas</h2>
+    <h2>Daftar keping</h2>
     <div id="itemList"></div>
   </div>
   </div>
@@ -216,10 +228,15 @@
     <div class="chips" id="brandChips"></div>
   </div>
   <div class="field">
-    <label for="inGram">Berat (gram)</label>
-    <input id="inGram" type="text" inputmode="decimal" placeholder="mis. 5 atau 0,5">
+    <label for="inGram" id="gramLabel">Berat per keping (gram)</label>
+    <div class="inline">
+      <input id="inGram" type="text" inputmode="decimal" placeholder="mis. 1 atau 0,5 + 1 + 1">
+      <button type="button" class="btn-add" id="btnAddPiece">+ Keping</button>
+    </div>
+    <div class="hint" id="gramHint">Ketuk ukuran di bawah untuk menambah 1 keping (ketuk 2× = 2 keping). Bisa juga ketik beberapa sekaligus, pisahkan dengan +, mis. <b>0,5 + 1 + 1</b>.</div>
     <div class="chips" id="gramChips"></div>
   </div>
+  <div class="pieces" id="pieceList" style="display:none"></div>
   <div class="preview" id="itemPreview" style="display:none"></div>
   <div class="actions">
     <button class="btn danger" id="btnDelete" style="display:none">Hapus</button>
@@ -444,9 +461,11 @@
   function groupByBrand() {
     var map = {}, order = [];
     state.items.forEach(function (it) {
-      if (!map[it.brand]) { map[it.brand] = { brand: it.brand, gram: 0, count: 0 }; order.push(it.brand); }
+      if (!map[it.brand]) { map[it.brand] = { brand: it.brand, gram: 0, count: 0, sizes: {} }; order.push(it.brand); }
       map[it.brand].gram += it.gram;
       map[it.brand].count++;
+      var k = String(+it.gram.toFixed(4));
+      map[it.brand].sizes[k] = (map[it.brand].sizes[k] || 0) + 1;
     });
     return order.map(function (b) { return map[b]; });
   }
@@ -490,12 +509,30 @@
   }
   function $(id) { return document.getElementById(id); }
 
+  // "0,5 g ×1 · 1 g ×2", smallest size first
+  function composition(sizes) {
+    return Object.keys(sizes).map(Number).sort(function (a, b) { return a - b; }).map(function (g) {
+      return num(g, 4) + ' g ×' + sizes[String(g)];
+    }).join(' · ');
+  }
+  // "0,5 + 1 + 1" -> [0.5, 1, 1]; null if any part is not a positive number
+  function parseGramList(str) {
+    var parts = String(str || '').split(/[+;\n]/).map(function (x) { return x.trim(); }).filter(Boolean);
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var g = parseNum(parts[i]);
+      if (!(g > 0) || g > 100000) return null;
+      out.push(g);
+    }
+    return out;
+  }
+
   // ---------- Render ----------
   function render() {
     var p = state.price;
     var tv = totalValue();
     $('total').textContent = p ? rp(tv) : (state.items.length ? 'Memuat harga…' : 'Rp 0');
-    $('totalGram').textContent = grams(totalGram()) + ' · ' + state.items.length + ' catatan';
+    $('totalGram').textContent = grams(totalGram()) + ' · ' + state.items.length + ' keping';
 
     // change vs previous day
     var ch = $('change'); ch.innerHTML = '';
@@ -530,7 +567,8 @@
         var tag = cfg.mode === 'manual' ? 'manual' : cfg.mode === 'pct' ? ('spot ' + (cfg.pct >= 0 ? '+' : '') + num(cfg.pct, 2) + '%') : 'spot';
         return '<div class="row tap" data-brand="' + esc(g.brand) + '">' +
           '<div class="l"><div class="name">' + esc(g.brand) + '<span class="tag">' + tag + '</span></div>' +
-          '<div class="small">' + grams(g.gram) + ' · ' + (ppg ? rp(ppg) + '/g' : '–') + '</div></div>' +
+          '<div class="small">' + g.count + ' keping · ' + grams(g.gram) + ' · ' + (ppg ? rp(ppg) + '/g' : '–') + '</div>' +
+          '<div class="small comp">' + composition(g.sizes) + '</div></div>' +
           '<div class="r"><div class="val">' + (ppg ? rp(g.gram * ppg) : '–') + '</div></div></div>';
       }).join('');
     }
@@ -538,7 +576,7 @@
     // items
     var il = $('itemList');
     if (!state.items.length) {
-      il.innerHTML = '<div class="empty">Belum ada catatan.<br>Ketuk <b>+ Tambah Emas</b> untuk mencatat merek dan beratnya.</div>';
+      il.innerHTML = '<div class="empty">Belum ada keping emas.<br>Ketuk <b>+ Tambah Emas</b> untuk mencatat merek dan beratnya.</div>';
     } else {
       il.innerHTML = state.items.slice().reverse().map(function (it) {
         var ppg = pricePerGram(it.brand);
@@ -572,6 +610,7 @@
 
   // Item sheet
   var editingId = null;
+  var pieces = []; // grams of pieces queued in "add" mode
   function knownBrands() {
     var seen = {}, out = [];
     state.items.forEach(function (it) { if (!seen[it.brand]) { seen[it.brand] = 1; out.push(it.brand); } });
@@ -585,9 +624,39 @@
     }).join('');
     var g = parseNum($('inGram').value);
     $('gramChips').innerHTML = SUGGESTED_GRAMS.map(function (x) {
-      return '<button type="button" data-g="' + x + '" class="' + (g === x ? 'sel' : '') + '">' + num(x, 2) + ' g</button>';
+      var sel = editingId ? g === x : pieces.indexOf(x) >= 0;
+      return '<button type="button" data-g="' + x + '" class="' + (sel ? 'sel' : '') + '">' + (editingId ? '' : '+ ') + num(x, 2) + ' g</button>';
     }).join('');
+    renderPieces();
     updateItemPreview();
+  }
+  function renderPieces() {
+    var box = $('pieceList');
+    if (editingId || !pieces.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    var counts = {}, order = [];
+    pieces.forEach(function (g) { var k = String(g); if (!counts[k]) { counts[k] = 0; order.push(g); } counts[k]++; });
+    order.sort(function (a, b) { return a - b; });
+    box.style.display = 'block';
+    box.innerHTML = order.map(function (g) {
+      var n = counts[String(g)];
+      return '<div class="piece"><div class="pv"><b>' + num(g, 4) + ' gram</b> <span class="small">× ' + n + ' = ' + grams(g * n) + '</span></div>' +
+        '<div class="stepper"><button type="button" data-dec="' + g + '" aria-label="Kurangi">−</button><span class="n">' + n + '</span>' +
+        '<button type="button" data-inc="' + g + '" aria-label="Tambah">+</button></div></div>';
+    }).join('');
+  }
+  // pieces queued + whatever is still typed in the gram box
+  function allPieces() {
+    var typed = parseGramList($('inGram').value);
+    return typed === null ? null : pieces.concat(typed);
+  }
+  function addTypedPieces() {
+    var typed = parseGramList($('inGram').value);
+    if (typed === null) { toast('Berat tidak valid. Contoh: 1 atau 0,5 + 1 + 1'); $('inGram').focus(); return false; }
+    if (!typed.length) { toast('Ketik berat dulu, atau ketuk ukuran di bawah'); $('inGram').focus(); return false; }
+    pieces = pieces.concat(typed);
+    $('inGram').value = '';
+    renderItemChips();
+    return true;
   }
   function normalizeBrand(name) {
     var t = name.trim().replace(/\s+/g, ' ');
@@ -595,12 +664,16 @@
     return match || t;
   }
   function updateItemPreview() {
-    var b = normalizeBrand($('inBrand').value), g = parseNum($('inGram').value);
+    var b = normalizeBrand($('inBrand').value);
+    var list = editingId ? [parseNum($('inGram').value)].filter(function (g) { return g > 0; }) : (allPieces() || pieces);
+    var n = list.length, total = list.reduce(function (a, g) { return a + g; }, 0);
     var pv = $('itemPreview');
-    if (b && g > 0 && state.price) {
-      var ppg = pricePerGram(b);
+    if (!editingId) $('btnSaveItem').textContent = n > 1 ? 'Simpan ' + n + ' keping' : 'Simpan';
+    if (n && total > 0) {
+      var ppg = b && state.price ? pricePerGram(b) : 0;
       pv.style.display = 'block';
-      pv.innerHTML = 'Perkiraan nilai: <b>' + rp(g * ppg) + '</b><br><span class="small">' + rp(ppg) + '/gram (' + (state.brands[b] ? 'harga merek' : 'harga spot') + ')</span>';
+      pv.innerHTML = '<b>' + n + ' keping · ' + grams(total) + '</b>' +
+        (ppg ? '<br>Perkiraan nilai: <b>' + rp(total * ppg) + '</b> <span class="small">(' + rp(ppg) + '/gram, ' + (state.brands[b] ? 'harga merek' : 'harga spot') + ')</span>' : '');
     } else pv.style.display = 'none';
   }
   $('brandChips').addEventListener('click', function (e) {
@@ -609,7 +682,20 @@
   });
   $('gramChips').addEventListener('click', function (e) {
     var g = e.target.getAttribute('data-g'); if (!g) return;
-    $('inGram').value = num(Number(g), 2); renderItemChips();
+    if (editingId) $('inGram').value = num(Number(g), 2);
+    else pieces.push(Number(g));
+    renderItemChips();
+  });
+  $('pieceList').addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t) return;
+    var inc = t.getAttribute('data-inc'), dec = t.getAttribute('data-dec');
+    if (inc) pieces.push(Number(inc));
+    if (dec) { var i = pieces.lastIndexOf(Number(dec)); if (i >= 0) pieces.splice(i, 1); }
+    renderItemChips();
+  });
+  $('btnAddPiece').addEventListener('click', addTypedPieces);
+  $('inGram').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !editingId) { e.preventDefault(); addTypedPieces(); }
   });
   $('inBrand').addEventListener('input', renderItemChips);
   $('inGram').addEventListener('input', renderItemChips);
@@ -617,10 +703,16 @@
   function openItem(id) {
     editingId = id || null;
     var it = id ? state.items.filter(function (x) { return x.id === id; })[0] : null;
-    $('itemTitle').textContent = it ? 'Ubah catatan' : 'Tambah emas';
+    pieces = [];
+    $('itemTitle').textContent = it ? 'Ubah keping' : 'Tambah emas';
     $('inBrand').value = it ? it.brand : '';
     $('inGram').value = it ? num(it.gram, 4) : '';
     $('btnDelete').style.display = it ? 'block' : 'none';
+    $('btnAddPiece').style.display = it ? 'none' : '';
+    $('gramLabel').textContent = it ? 'Berat keping ini (gram)' : 'Berat per keping (gram)';
+    $('gramHint').style.display = it ? 'none' : '';
+    $('inGram').placeholder = it ? 'mis. 1 atau 0,5' : 'mis. 1 atau 0,5 + 1 + 1';
+    $('btnSaveItem').textContent = 'Simpan';
     renderItemChips();
     openSheet('sheetItem');
     if (!it) setTimeout(function () { $('inBrand').focus(); }, 50);
@@ -628,26 +720,35 @@
   $('btnAdd').addEventListener('click', function () { openItem(null); });
   $('btnSaveItem').addEventListener('click', function () {
     var b = normalizeBrand($('inBrand').value);
-    var g = parseNum($('inGram').value);
     if (!b) { toast('Isi merek emas dulu'); $('inBrand').focus(); return; }
-    if (!(g > 0)) { toast('Isi berat dalam gram (lebih dari 0)'); $('inGram').focus(); return; }
+    var added = 0, addedGram = 0;
     if (editingId) {
+      var g = parseNum($('inGram').value);
+      if (!(g > 0)) { toast('Isi berat dalam gram (lebih dari 0)'); $('inGram').focus(); return; }
       state.items.forEach(function (x) { if (x.id === editingId) { x.brand = b; x.gram = g; } });
     } else {
-      state.items.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), brand: b, gram: g, added: new Date().toISOString() });
+      var list = allPieces();
+      if (list === null) { toast('Berat tidak valid. Contoh: 1 atau 0,5 + 1 + 1'); $('inGram').focus(); return; }
+      if (!list.length) { toast('Tambahkan minimal 1 keping'); $('inGram').focus(); return; }
+      var now = new Date().toISOString();
+      list.forEach(function (g, i) {
+        state.items.push({ id: Date.now().toString(36) + i.toString(36) + Math.random().toString(36).slice(2, 6), brand: b, gram: g, added: now });
+        addedGram += g;
+      });
+      added = list.length;
     }
     cleanupBrands();
     recordHistory();
     saveState(); closeSheet(); render();
-    toast(editingId ? 'Catatan diperbarui' : 'Emas dicatat');
+    toast(editingId ? 'Keping diperbarui' : (added + ' keping ' + b + ' (' + grams(addedGram) + ') dicatat'));
   });
   $('btnDelete').addEventListener('click', function () {
     if (!editingId) return;
-    if (!confirm('Hapus catatan ini?')) return;
+    if (!confirm('Hapus keping ini?')) return;
     state.items = state.items.filter(function (x) { return x.id !== editingId; });
     cleanupBrands();
     recordHistory();
-    saveState(); closeSheet(); render(); toast('Catatan dihapus');
+    saveState(); closeSheet(); render(); toast('Keping dihapus');
   });
   function cleanupBrands() {
     var used = {};
@@ -734,7 +835,7 @@
     var items = d.items.filter(function (x) { return x && x.brand && Number(x.gram) > 0; }).map(function (x) {
       return { id: String(x.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6))), brand: String(x.brand), gram: Number(x.gram), added: x.added || new Date().toISOString() };
     });
-    if (!confirm('Ganti semua data dengan ' + items.length + ' catatan dari cadangan?')) return;
+    if (!confirm('Ganti semua data dengan ' + items.length + ' keping dari cadangan?')) return;
     state.items = items;
     state.brands = (d.brands && typeof d.brands === 'object') ? d.brands : {};
     cleanupBrands(); recordHistory();

@@ -48,7 +48,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setupEdgeToEdge();
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -72,6 +71,12 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient());
         webView.addJavascriptInterface(new Bridge(), "Native");
         setContentView(root);
+        // Must run after setContentView: the window's decor view (and its insets controller) exists only then.
+        try {
+            setupEdgeToEdge();
+        } catch (RuntimeException e) {
+            // Cosmetic only; never let system-bar styling stop the app from opening.
+        }
         webView.loadUrl("file:///android_asset/index.html");
     }
 
@@ -87,7 +92,7 @@ public class MainActivity extends Activity {
         }
         if (Build.VERSION.SDK_INT >= 30) {
             w.setDecorFitsSystemWindows(false);
-            WindowInsetsController c = w.getInsetsController();
+            WindowInsetsController c = w.getDecorView().getWindowInsetsController();
             if (c != null) {
                 // Light (white) status bar icons over the gold header, dark navigation icons over the light page.
                 c.setSystemBarsAppearance(WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,

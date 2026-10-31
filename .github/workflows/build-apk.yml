@@ -27,6 +27,8 @@ jobs:
             mkdir -p keystore
             echo "$KS_B64" | base64 -d > keystore/catatemas.jks
           fi
+      - name: Start-up tests (Robolectric, Android 8 / 11 / 15)
+        run: ./gradlew testReleaseUnitTest --no-daemon
       - name: Build release APK
         env:
           CATATEMAS_STORE_PASSWORD: ${{ secrets.CATATEMAS_STORE_PASSWORD }}
