@@ -124,6 +124,10 @@
   .btn.ghost { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
   .btn.danger { background: #fdecea; color: var(--down); }
   .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+  .sellbox { margin-top: 12px; background: rgba(0,0,0,.16); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; }
+  .sellbox b { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .section-title { font-size: 14px; font-weight: 700; margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .section-title:first-of-type { border-top: 0; padding-top: 0; margin-top: 4px; }
   .inline { display: flex; gap: 8px; }
   .inline input { flex: 1; min-width: 0; }
   .btn-add { flex-shrink: 0; border: 0; border-radius: 12px; padding: 0 14px; background: var(--gold-100); color: var(--gold-900); font-weight: 700; font-size: 15px; border: 1.5px solid var(--gold-300); }
@@ -184,6 +188,7 @@
     </div>
     <div class="updated" id="updated">Belum ada data harga</div>
   </div>
+  <div id="sellEst"></div>
   <div id="warn"></div>
 </div></section>
 
@@ -201,7 +206,7 @@
   <div class="card">
     <h2>Per merek</h2>
     <div id="brandList"></div>
-    <div class="hint">Ketuk merek untuk mengatur harga per gram (mis. harga jual/buyback merek itu).</div>
+    <div class="hint">Ketuk merek untuk mengatur nilai pasar dan perkiraan harga jual kembali (buyback).</div>
   </div>
 
   <div class="card">
@@ -248,6 +253,7 @@
 <!-- Brand price settings -->
 <div class="sheet" id="sheetBrand">
   <h3 id="brandTitle">Harga merek</h3>
+  <div class="section-title">1. Nilai pasar (untuk total nilai)</div>
   <div class="field">
     <label>Cara hitung harga per gram</label>
     <div class="seg" id="modeSeg">
@@ -259,12 +265,32 @@
   <div class="field" id="fieldPct">
     <label for="inPct">Selisih dari harga spot (%)</label>
     <input id="inPct" type="text" inputmode="decimal" placeholder="mis. 8 atau -3">
-    <div class="hint">Positif = lebih mahal dari spot (umum untuk harga jual logam mulia bermerek). Negatif = lebih murah (mis. harga buyback). Tetap ikut naik-turun harga spot otomatis.</div>
+    <div class="hint">Positif = lebih mahal dari spot (mis. harga beli di toko/situs merek). Negatif = lebih murah. Tetap ikut naik-turun harga spot otomatis. Untuk harga saat menjual, atur di bagian 2.</div>
   </div>
   <div class="field" id="fieldManual">
     <label for="inManual">Harga per gram (Rp)</label>
     <input id="inManual" type="text" inputmode="numeric" placeholder="mis. 2.450.000">
     <div class="hint">Harga tetap; tidak ikut berubah otomatis. Perbarui sendiri bila merek mengubah harganya.</div>
+  </div>
+  <div class="section-title">2. Perkiraan harga jual kembali (buyback)</div>
+  <div class="field">
+    <label>Harga yang kira-kira kamu terima saat menjual</label>
+    <div class="seg" id="sellSeg">
+      <button data-smode="default">Default</button>
+      <button data-smode="pct">Spot ± %</button>
+      <button data-smode="manual">Manual (Rp)</button>
+    </div>
+    <div class="hint" id="sellDefaultHint"></div>
+  </div>
+  <div class="field" id="fieldSellPct">
+    <label for="inSellPct">Selisih buyback dari harga spot (%)</label>
+    <input id="inSellPct" type="text" inputmode="decimal" placeholder="mis. 0,7 atau -5">
+    <div class="hint">Ikut naik-turun harga spot otomatis.</div>
+  </div>
+  <div class="field" id="fieldSellManual">
+    <label for="inSellManual">Harga buyback per gram (Rp)</label>
+    <input id="inSellManual" type="text" inputmode="numeric" placeholder="mis. 2.276.000">
+    <div class="hint">Salin dari situs/gerai resmi merek (mis. logammulia.com, Pegadaian). Tidak berubah otomatis.</div>
   </div>
   <div class="preview" id="brandPreview"></div>
   <div class="actions">
@@ -442,6 +468,24 @@
   }
 
   // ---------- Pricing ----------
+  // Default buyback premium vs. our spot price, from official buyback prices on 31 Oct 2026
+  // (Antam: logammulia.com Rp2.276.000; UBS Rp2.274.000; Galeri24 Rp2.299.000) / spot Rp2.259.863.
+  var SELL_DEFAULT_PCT = { 'Antam': 0.7, 'UBS': 0.6, 'Galeri24': 1.7 };
+  var SELL_DEFAULT_ASOF = '31 Okt 2026';
+  function sellCfg(name) {
+    var c = state.brands[name];
+    return (c && c.sell) || { mode: 'default' };
+  }
+  function sellPrice(name, cfg, spot) {
+    cfg = cfg || sellCfg(name);
+    if (spot == null) spot = state.price ? state.price.perGram : 0;
+    if (cfg.mode === 'manual' && cfg.manual > 0) return cfg.manual;
+    if (cfg.mode === 'pct' && isFinite(cfg.pct)) return spot * (1 + cfg.pct / 100);
+    return spot * (1 + (SELL_DEFAULT_PCT[name] || 0) / 100);
+  }
+  function totalSell() {
+    return groupByBrand().reduce(function (a, g) { return a + g.gram * sellPrice(g.brand); }, 0);
+  }
   function brandCfg(name) {
     return state.brands[name] || { mode: 'spot' };
   }
@@ -548,6 +592,14 @@
         new Date(prev.t).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + '</span>';
     }
 
+    var sb = $('sellEst');
+    if (p && state.items.length) {
+      var ts = totalSell(), d = ts - tv, dp = tv > 0 ? d / tv * 100 : 0;
+      sb.innerHTML = '<div class="sellbox">Perkiraan jika dijual (buyback): <b>' + rp(ts) + '</b><br>' +
+        (Math.abs(d) < 0.5 ? 'sama dengan nilai pasar' : ((d >= 0 ? '+' : '−') + rp(Math.abs(d)) + ' (' + (d >= 0 ? '+' : '−') + num(Math.abs(dp), 2) + '%) dibanding nilai pasar')) +
+        ' · belum termasuk pajak</div>';
+    } else sb.innerHTML = '';
+
     $('updated').textContent = p ? ('Harga diperbarui ' + when(p.updatedAt) + ' (' + ago(p.updatedAt) + ')') : 'Belum ada data harga';
     $('warn').innerHTML = lastError ? '<div class="warn">Tidak bisa memuat harga terbaru' + (p ? ' — menampilkan harga terakhir yang tersimpan.' : '. Periksa koneksi internet lalu ketuk Perbarui.') + '</div>' : '';
 
@@ -568,6 +620,7 @@
         return '<div class="row tap" data-brand="' + esc(g.brand) + '">' +
           '<div class="l"><div class="name">' + esc(g.brand) + '<span class="tag">' + tag + '</span></div>' +
           '<div class="small">' + g.count + ' keping · ' + grams(g.gram) + ' · ' + (ppg ? rp(ppg) + '/g' : '–') + '</div>' +
+          (p ? '<div class="small">Jual kembali ≈ ' + rp(sellPrice(g.brand)) + '/g → <b>' + rp(g.gram * sellPrice(g.brand)) + '</b></div>' : '') +
           '<div class="small comp">' + composition(g.sizes) + '</div></div>' +
           '<div class="r"><div class="val">' + (ppg ? rp(g.gram * ppg) : '–') + '</div></div></div>';
       }).join('');
@@ -757,7 +810,20 @@
   }
 
   // Brand sheet
-  var editingBrand = null, brandMode = 'spot';
+  var editingBrand = null, brandMode = 'spot', sellMode = 'default';
+  function setSellMode(m) {
+    sellMode = m;
+    document.querySelectorAll('#sellSeg button').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-smode') === m); });
+    $('fieldSellPct').style.display = m === 'pct' ? 'block' : 'none';
+    $('fieldSellManual').style.display = m === 'manual' ? 'block' : 'none';
+    $('sellDefaultHint').style.display = m === 'default' ? 'block' : 'none';
+    updateBrandPreview();
+  }
+  function draftSell() {
+    if (sellMode === 'pct') return { mode: 'pct', pct: parseNum($('inSellPct').value) };
+    if (sellMode === 'manual') return { mode: 'manual', manual: parseNum($('inSellManual').value, true) };
+    return { mode: 'default' };
+  }
   function setMode(m) {
     brandMode = m;
     document.querySelectorAll('#modeSeg button').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-mode') === m); });
@@ -777,14 +843,28 @@
     else if (cfg.mode === 'pct') ppg = isFinite(cfg.pct) ? spot * (1 + cfg.pct / 100) : 0;
     else ppg = spot;
     var g = groupByBrand().filter(function (x) { return x.brand === editingBrand; })[0];
-    $('brandPreview').innerHTML = ppg
-      ? ('Harga ' + esc(editingBrand) + ': <b>' + rp(ppg) + '/gram</b>' + (g ? '<br><span class="small">' + grams(g.gram) + ' = ' + rp(g.gram * ppg) + '</span>' : ''))
-      : '<span class="small">Lengkapi isian untuk melihat perkiraan.</span>';
+    var sc = draftSell();
+    var spg = (sc.mode === 'manual' && !(sc.manual > 0)) || (sc.mode === 'pct' && !isFinite(sc.pct)) ? 0 : sellPrice(editingBrand, sc, spot);
+    $('brandPreview').innerHTML = (ppg
+      ? ('Nilai pasar: <b>' + rp(ppg) + '/gram</b>' + (g ? ' <span class="small">(' + grams(g.gram) + ' = ' + rp(g.gram * ppg) + ')</span>' : ''))
+      : '<span class="small">Lengkapi isian nilai pasar.</span>') + '<br>' +
+      (spg
+      ? ('Jual kembali ≈ <b>' + rp(spg) + '/gram</b>' + (g ? ' <span class="small">(' + grams(g.gram) + ' = ' + rp(g.gram * spg) + ')</span>' : ''))
+      : '<span class="small">Lengkapi isian harga jual kembali.</span>');
   }
   document.querySelectorAll('#modeSeg button').forEach(function (b) {
     b.addEventListener('click', function () { setMode(b.getAttribute('data-mode')); });
   });
   $('inPct').addEventListener('input', updateBrandPreview);
+  document.querySelectorAll('#sellSeg button').forEach(function (b) {
+    b.addEventListener('click', function () { setSellMode(b.getAttribute('data-smode')); });
+  });
+  $('inSellPct').addEventListener('input', updateBrandPreview);
+  $('inSellManual').addEventListener('input', function () {
+    var n = parseNum($('inSellManual').value, true);
+    if (n > 0) $('inSellManual').value = n.toLocaleString('id-ID');
+    updateBrandPreview();
+  });
   $('inManual').addEventListener('input', function () {
     var n = parseNum($('inManual').value, true);
     if (n > 0) $('inManual').value = n.toLocaleString('id-ID');
@@ -796,14 +876,25 @@
     $('brandTitle').textContent = 'Harga ' + name;
     $('inPct').value = cfg.mode === 'pct' ? num(cfg.pct, 2) : '';
     $('inManual').value = cfg.mode === 'manual' ? Math.round(cfg.manual).toLocaleString('id-ID') : '';
+    var sc = sellCfg(name), dp = SELL_DEFAULT_PCT[name];
+    $('inSellPct').value = sc.mode === 'pct' ? num(sc.pct, 2) : '';
+    $('inSellManual').value = sc.mode === 'manual' ? Math.round(sc.manual).toLocaleString('id-ID') : '';
+    $('sellDefaultHint').innerHTML = dp != null
+      ? ('Default ' + esc(name) + ': spot ' + (dp >= 0 ? '+' : '') + num(dp, 2) + '%, dari harga buyback resmi ' + SELL_DEFAULT_ASOF + '. Harga buyback berubah setiap hari; untuk angka paling akurat pakai <b>Manual</b> sesuai harga hari ini.')
+      : ('Default: sama dengan harga spot (belum ada data buyback untuk ' + esc(name) + '). Isi <b>Manual</b> atau <b>Spot ± %</b> sesuai harga buyback toko/merek. Catatan: perhiasan biasanya dibeli kembali jauh di bawah spot.');
     setMode(cfg.mode || 'spot');
+    setSellMode(sc.mode || 'default');
     openSheet('sheetBrand');
   }
   $('btnSaveBrand').addEventListener('click', function () {
     var cfg = draftCfg();
     if (cfg.mode === 'pct' && !isFinite(cfg.pct)) { toast('Isi selisih persen, mis. 8 atau -3'); return; }
     if (cfg.mode === 'manual' && !(cfg.manual > 0)) { toast('Isi harga per gram'); return; }
-    if (cfg.mode === 'spot') delete state.brands[editingBrand]; else state.brands[editingBrand] = cfg;
+    var sc = draftSell();
+    if (sc.mode === 'pct' && !isFinite(sc.pct)) { toast('Isi selisih persen buyback, mis. 0,7 atau -5'); return; }
+    if (sc.mode === 'manual' && !(sc.manual > 0)) { toast('Isi harga buyback per gram'); return; }
+    if (sc.mode !== 'default') cfg.sell = sc;
+    if (cfg.mode === 'spot' && !cfg.sell) delete state.brands[editingBrand]; else state.brands[editingBrand] = cfg;
     recordHistory();
     saveState(); closeSheet(); render(); toast('Harga ' + editingBrand + ' disimpan');
   });
