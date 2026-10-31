@@ -4,10 +4,10 @@ Aplikasi Android sederhana untuk mencatat kepemilikan emas (merek + gram) dan la
 
 ## Unduh & pasang
 
-**[⬇ Unduh CatatEmas.apk](https://github.com/bayurmdn/catatemas/raw/ccr-b92d6e00-s42y5z/release/CatatEmas.apk)**
+APK dibangun otomatis oleh GitHub Actions: buka tab **[Actions](https://github.com/bayurmdn/catatemas/actions)** → run **Build APK** terbaru → unduh artefak `CatatEmas-apk` (berbentuk .zip, ekstrak untuk mendapatkan `app-release.apk`).
 
-1. Buka tautan di atas dari HP Android (Android 8.0 ke atas).
-2. Setelah selesai diunduh, ketuk file `CatatEmas.apk`.
+1. Lakukan dari HP Android (Android 8.0 ke atas), dalam keadaan login GitHub.
+2. Setelah diekstrak, ketuk file `.apk`-nya.
 3. Jika muncul peringatan, izinkan **"Instal aplikasi tidak dikenal"** untuk browser/File Manager, lalu ketuk **Instal**.
 4. Google Play Protect mungkin menampilkan peringatan karena aplikasi tidak berasal dari Play Store — pilih **Tetap instal**.
 
