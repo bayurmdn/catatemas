@@ -46,6 +46,7 @@
       radial-gradient(75% 50% at 35% 112%, rgba(150, 105, 10, .20), transparent 70%),
       var(--bg0);
   }
+  [hidden] { display: none !important; }
   .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 12px; }
   button { font: inherit; color: inherit; cursor: pointer; }
@@ -143,6 +144,10 @@
   .size-row .v { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; min-width: 7.5em; }
   .brand-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .brand-actions .btn { flex: 1 1 140px; }
+  .acct { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto 22px; grid-template-areas: "name val chev" "note note chev" "meta meta chev" "sv sv chev"; column-gap: 10px; row-gap: 2px; align-items: center; text-align: left; background: none; border: 0; padding: 14px 12px 14px 16px; min-height: 72px; border-radius: var(--radius); }
+  .acct .note { grid-area: note; font-size: 14px; color: var(--faint); font-style: italic; overflow-wrap: anywhere; }
+  .dtag { display: inline-block; font-size: 13px; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; color: #bfe3ff; border: 1px solid rgba(191, 227, 255, .6); }
+  @media (min-width: 480px) { .acct { grid-template-areas: "name val chev" "note note chev" "meta sv chev"; } }
   .empty { padding: 26px 18px; text-align: center; color: var(--muted); }
   .empty b { color: var(--text); }
   .footer { text-align: center; padding: 18px 0 0; }
@@ -241,6 +246,7 @@
     .seg span { font-size: 13px; }
     .size-row .v { min-width: 0; }
     .brand-head { grid-template-columns: minmax(0, 1fr) 22px; grid-template-areas: "name chev" "val chev" "meta chev" "sv chev"; }
+    .acct { grid-template-columns: minmax(0, 1fr) 22px; grid-template-areas: "name chev" "note chev" "val chev" "meta chev" "sv chev"; }
     .bh-v, .bh-sv { text-align: left; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -280,11 +286,16 @@
     </div>
 
     <main class="stack" aria-labelledby="colTitle">
+      <h2 class="sr-only" id="colTitle">Koleksi</h2>
       <div class="sec-head">
-        <h2 id="colTitle">Koleksi</h2>
+        <h2 id="physTitle">Emas fisik</h2>
         <button class="link-btn" id="btnToggleAll" type="button">Buka semua</button>
       </div>
       <div class="brands" id="brandList"></div>
+      <div class="sec-head" id="digiHead">
+        <h2 id="digiTitle">Emas digital</h2>
+      </div>
+      <div class="brands" id="digiList"></div>
     </main>
   </div>
   <footer class="footer">
@@ -300,6 +311,14 @@
 <!-- Add pieces (bulk) -->
 <div class="sheet" id="sheetAdd" role="dialog" aria-modal="true" aria-labelledby="addTitle">
   <h2 id="addTitle">Tambah emas</h2>
+  <fieldset class="field">
+    <legend>Jenis emas</legend>
+    <div class="seg">
+      <label><input type="radio" name="kind" value="physical" checked><span>Fisik (batangan/perhiasan)</span></label>
+      <label><input type="radio" name="kind" value="digital"><span>Digital (aplikasi)</span></label>
+    </div>
+  </fieldset>
+  <div id="physFields">
   <p class="lead">Pilih merek, lalu tambahkan keping sesuai beratnya.</p>
   <div class="field">
     <label for="inBrand">Merek</label>
@@ -318,6 +337,26 @@
     <p class="err" id="gramErr" role="alert" hidden></p>
   </div>
   <ul class="queue" id="pieceList" aria-label="Keping yang akan disimpan" hidden></ul>
+  </div>
+  <div id="digiFields" hidden>
+    <p class="lead">Catat saldo emas di aplikasi emas digital kamu.</p>
+    <div class="field">
+      <label for="inPlatform">Nama aplikasi / platform</label>
+      <input id="inPlatform" type="text" placeholder="mis. Pegadaian Digital" autocomplete="off" autocapitalize="words" aria-describedby="platformErr">
+      <div class="chips" id="platformChips" role="group" aria-label="Pilih aplikasi"></div>
+      <p class="err" id="platformErr" role="alert" hidden></p>
+    </div>
+    <div class="field">
+      <label for="inDigiGram">Saldo emas (gram)</label>
+      <input id="inDigiGram" type="text" inputmode="decimal" placeholder="mis. 1,2345" aria-describedby="digiGramHint digiGramErr">
+      <p class="hint" id="digiGramHint">Lihat saldo di aplikasinya. Desimal boleh (pakai koma), mis. 0,0512.</p>
+      <p class="err" id="digiGramErr" role="alert" hidden></p>
+    </div>
+    <div class="field">
+      <label for="inNote">Catatan (opsional)</label>
+      <input id="inNote" type="text" placeholder="mis. akun pribadi, tabungan anak" autocomplete="off" maxlength="80">
+    </div>
+  </div>
   <div class="preview" id="addPreview" aria-live="polite" hidden></div>
   <div class="actions">
     <button class="btn" type="button" data-close>Batal</button>
@@ -342,6 +381,35 @@
   <div class="actions" style="margin-top:10px">
     <button class="btn" type="button" data-close>Batal</button>
     <button class="btn primary" type="button" id="btnSaveSize">Simpan</button>
+  </div>
+</div>
+
+<!-- Digital gold account -->
+<div class="sheet" id="sheetDigi" role="dialog" aria-modal="true" aria-labelledby="digiSheetTitle">
+  <h2 id="digiSheetTitle">Emas digital</h2>
+  <p class="lead">Perbarui saldo setiap kali kamu beli atau jual di aplikasinya.</p>
+  <div class="field">
+    <label for="edPlatform">Nama aplikasi / platform</label>
+    <input id="edPlatform" type="text" autocomplete="off" autocapitalize="words" aria-describedby="edPlatformErr">
+    <p class="err" id="edPlatformErr" role="alert" hidden></p>
+  </div>
+  <div class="field">
+    <label for="edGram">Saldo emas (gram)</label>
+    <input id="edGram" type="text" inputmode="decimal" aria-describedby="edGramErr">
+    <p class="err" id="edGramErr" role="alert" hidden></p>
+  </div>
+  <div class="field">
+    <label for="edNote">Catatan (opsional)</label>
+    <input id="edNote" type="text" autocomplete="off" maxlength="80">
+  </div>
+  <div class="preview" id="digiPreview" aria-live="polite"></div>
+  <div class="actions">
+    <button class="btn danger" type="button" id="btnDigiDelete">Hapus akun</button>
+    <button class="btn" type="button" id="btnDigiPrice">Atur harga</button>
+  </div>
+  <div class="actions" style="margin-top:10px">
+    <button class="btn" type="button" data-close>Batal</button>
+    <button class="btn primary" type="button" id="btnSaveDigi">Simpan</button>
   </div>
 </div>
 
@@ -432,6 +500,8 @@
   var UI_KEY = 'catatemas.ui';
   var SUGGESTED_BRANDS = ['Antam', 'UBS', 'Galeri24', 'Lotus Archi', 'King Halim', 'Hartadinata', 'EOA Gold', 'Perhiasan'];
   var SUGGESTED_GRAMS = [0.5, 1, 2, 5, 10, 25, 50, 100];
+  // Suggestions only; users can type any app name.
+  var SUGGESTED_PLATFORMS = ['Pegadaian Digital', 'Pluang', 'Treasury', 'Tokopedia Emas', 'DANA eMAS', 'Indogold', 'Lakuemas'];
   // Default buyback premium vs. the app's spot price, from official 1 g buyback prices on 31 Oct 2026
   // (Antam logammulia.com Rp2.276.000; UBS Rp2.274.000; Galeri24 Rp2.299.000) / spot Rp2.259.863.
   var SELL_DEFAULT_PCT = { 'Antam': 0.7, 'UBS': 0.6, 'Galeri24': 1.7 };
@@ -576,9 +646,14 @@
     return spot * (1 + (SELL_DEFAULT_PCT[name] || 0) / 100);
   }
   function gkey(g) { return String(+Number(g).toFixed(4)); }
+  function isDigital(it) { return it.kind === 'digital'; }
+  // Price settings are stored per key: physical brand name, or "d:<app name>" for digital gold.
+  function pkey(it) { return isDigital(it) ? 'd:' + it.brand : it.brand; }
+  function digitalItems() { return state.items.filter(isDigital); }
+  function physicalItems() { return state.items.filter(function (it) { return !isDigital(it); }); }
   function groupByBrand() {
     var map = {}, order = [];
-    state.items.forEach(function (it) {
+    physicalItems().forEach(function (it) {
       var b = map[it.brand];
       if (!b) { b = map[it.brand] = { brand: it.brand, gram: 0, count: 0, sizes: {} }; order.push(it.brand); }
       b.gram += it.gram; b.count++;
@@ -587,9 +662,10 @@
     });
     return order.map(function (n) { return map[n]; });
   }
-  function totalGram() { return state.items.reduce(function (a, it) { return a + it.gram; }, 0); }
-  function totalValue(spot) { return groupByBrand().reduce(function (a, g) { return a + g.gram * valuePrice(g.brand, null, spot); }, 0); }
-  function totalSell() { return groupByBrand().reduce(function (a, g) { return a + g.gram * sellPrice(g.brand); }, 0); }
+  function sumGram(list) { return list.reduce(function (a, it) { return a + it.gram; }, 0); }
+  function totalGram() { return sumGram(state.items); }
+  function totalValue(spot) { return state.items.reduce(function (a, it) { return a + it.gram * valuePrice(pkey(it), null, spot); }, 0); }
+  function totalSell() { return state.items.reduce(function (a, it) { return a + it.gram * sellPrice(pkey(it)); }, 0); }
 
   // ---------- Formatting ----------
   function rp(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
@@ -636,7 +712,12 @@
   function render() {
     var p = state.price, tv = totalValue(), groups = groupByBrand();
     $('total').textContent = p ? rp(tv) : (state.items.length ? 'Memuat harga…' : 'Rp 0');
-    $('totalMeta').textContent = grams(totalGram()) + ' · ' + state.items.length + ' keping · ' + groups.length + ' merek';
+    var phys = physicalItems(), digi = digitalItems();
+    var metaParts;
+    if (phys.length && digi.length) metaParts = [grams(totalGram()), 'Fisik ' + grams(sumGram(phys)) + ' (' + phys.length + ' keping)', 'Digital ' + grams(sumGram(digi)) + ' (' + digi.length + ' akun)'];
+    else if (digi.length) metaParts = [grams(sumGram(digi)), digi.length + ' akun emas digital'];
+    else metaParts = [grams(sumGram(phys)), phys.length + ' keping', groups.length + ' merek'];
+    $('totalMeta').textContent = metaParts.join(' · ');
 
     var ch = $('change'); ch.innerHTML = '';
     var prev = previousSnapshot();
@@ -664,7 +745,30 @@
       : 'Ketuk Perbarui untuk memuat harga.';
 
     renderBrands(groups);
+    renderDigital();
   }
+
+  function renderDigital() {
+    var list = digitalItems(), p = state.price;
+    $('digiHead').hidden = !list.length; $('digiList').hidden = !list.length;
+    list = list.slice().sort(function (a, b) { return b.gram - a.gram; });
+    $('digiList').innerHTML = list.map(function (it) {
+      var k = pkey(it), cfg = brandCfg(k), v = it.gram * valuePrice(k), sv = it.gram * sellPrice(k);
+      var tag = cfg.mode === 'manual' ? 'manual' : cfg.mode === 'pct' ? ('spot ' + (cfg.pct >= 0 ? '+' : '') + num(cfg.pct, 2) + '%') : 'spot';
+      return '<section class="brand glass"><h3><button type="button" class="acct" data-digi="' + esc(it.id) + '" aria-label="' +
+          esc(it.brand) + (it.note ? ', ' + esc(it.note) : '') + ', saldo ' + grams(it.gram) + (p ? ', ' + rp(v) : '') + '. Ubah">' +
+          '<span class="bh-name"><span class="bname">' + esc(it.brand) + '</span><span class="dtag">digital</span><span class="tag">' + tag + '</span>' +
+          '</span>' + (it.note ? '<span class="note">' + esc(it.note) + '</span>' : '') +
+          '<span class="bh-v">' + (p ? rp(v) : '–') + '</span>' +
+          '<span class="bmeta">Saldo ' + grams(it.gram) + '</span>' +
+          '<span class="bh-sv">' + (p ? 'jual ≈ ' + rp(sv) : '') + '</span>' +
+          '<svg class="chev" style="grid-area:chev;transform:rotate(-90deg)" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
+        '</button></h3></section>';
+    }).join('');
+  }
+  $('digiList').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-digi]'); if (t) openDigi(t.getAttribute('data-digi'), t);
+  });
 
   function isOpen(brand, total) {
     if (brand in ui.open) return !!ui.open[brand];
@@ -673,8 +777,9 @@
   function renderBrands(groups) {
     var box = $('brandList');
     $('btnToggleAll').hidden = groups.length < 2;
+    $('physTitle').parentNode.hidden = !groups.length && digitalItems().length > 0;
     if (!groups.length) {
-      box.innerHTML = '<div class="glass empty"><b>Belum ada emas tercatat.</b><br>Ketuk <b>+ Tambah Emas</b> untuk mencatat merek dan berat setiap keping.</div>';
+      box.innerHTML = digitalItems().length ? '' : '<div class="glass empty"><b>Belum ada emas tercatat.</b><br>Ketuk <b>+ Tambah Emas</b> untuk mencatat emas fisik (merek dan berat setiap keping) atau saldo emas digital.</div>';
       return;
     }
     groups.forEach(function (g) { g.value = g.gram * valuePrice(g.brand); });
@@ -744,7 +849,7 @@
   function openerKey(el) {
     if (!el || !el.getAttribute) return null;
     if (el.id) return '#' + el.id;
-    var attrs = ['data-gram', 'data-brand', 'data-toggle', 'data-add', 'data-price'], sel = el.tagName.toLowerCase();
+    var attrs = ['data-gram', 'data-brand', 'data-toggle', 'data-add', 'data-price', 'data-digi'], sel = el.tagName.toLowerCase();
     attrs.forEach(function (a) { if (el.hasAttribute(a)) sel += '[' + a + '="' + el.getAttribute(a).replace(/"/g, '\\"') + '"]'; });
     return sel;
   }
@@ -825,17 +930,42 @@
 
   // ---------- Add pieces (bulk) ----------
   var pieces = [];
-  function knownBrands() {
+  function knownNames(items, suggested) {
     var seen = {}, out = [];
-    state.items.forEach(function (it) { if (!seen[it.brand]) { seen[it.brand] = 1; out.push(it.brand); } });
-    SUGGESTED_BRANDS.forEach(function (b) { if (!seen[b]) { seen[b] = 1; out.push(b); } });
+    items.forEach(function (it) { if (!seen[it.brand]) { seen[it.brand] = 1; out.push(it.brand); } });
+    suggested.forEach(function (b) { if (!seen[b]) { seen[b] = 1; out.push(b); } });
     return out;
   }
-  function normalizeBrand(name) {
+  function knownBrands() { return knownNames(physicalItems(), SUGGESTED_BRANDS); }
+  function knownPlatforms() { return knownNames(digitalItems(), SUGGESTED_PLATFORMS); }
+  function normalizeName(name, known) {
     var t = String(name || '').trim().replace(/\s+/g, ' ');
-    return knownBrands().filter(function (b) { return b.toLowerCase() === t.toLowerCase(); })[0] || t;
+    return known.filter(function (b) { return b.toLowerCase() === t.toLowerCase(); })[0] || t;
   }
+  function normalizeBrand(name) { return normalizeName(name, knownBrands()); }
+  function normalizePlatform(name) { return normalizeName(name, knownPlatforms()); }
+  function addKind() { return radioVal('kind') || 'physical'; }
+  function syncKind() {
+    var d = addKind() === 'digital';
+    $('physFields').hidden = d; $('digiFields').hidden = !d;
+    renderAdd();
+  }
+  document.querySelectorAll('input[name="kind"]').forEach(function (r) { r.addEventListener('change', syncKind); });
+  function renderPlatformChips() {
+    var cur = $('inPlatform').value.trim().toLowerCase();
+    $('platformChips').innerHTML = knownPlatforms().map(function (b) {
+      return '<button type="button" data-pf="' + esc(b) + '" aria-pressed="' + (b.toLowerCase() === cur) + '">' + esc(b) + '</button>';
+    }).join('');
+  }
+  $('platformChips').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pf]'); if (!b) return;
+    $('inPlatform').value = b.getAttribute('data-pf'); showErr('platformErr', 'inPlatform', ''); renderAdd();
+    var sel = $('platformChips').querySelector('[aria-pressed="true"]'); if (sel) sel.focus();
+  });
+  $('inPlatform').addEventListener('input', function () { showErr('platformErr', 'inPlatform', ''); renderAdd(); });
+  $('inDigiGram').addEventListener('input', function () { showErr('digiGramErr', 'inDigiGram', ''); updateAddPreview(); });
   function renderAdd() {
+    renderPlatformChips();
     var cur = $('inBrand').value.trim().toLowerCase();
     $('brandChips').innerHTML = knownBrands().map(function (b) {
       return '<button type="button" data-b="' + esc(b) + '" aria-pressed="' + (b.toLowerCase() === cur) + '">' + esc(b) + '</button>';
@@ -859,6 +989,15 @@
   }
   function allPieces() { var t = parseGramList($('inGram').value); return t === null ? null : pieces.concat(t); }
   function updateAddPreview() {
+    if (addKind() === 'digital') {
+      var pf = normalizePlatform($('inPlatform').value), dg = parseNum($('inDigiGram').value), dpv = $('addPreview');
+      $('btnSaveAdd').textContent = 'Simpan saldo';
+      if (!(dg > 0)) { dpv.hidden = true; return; }
+      var dk = 'd:' + pf;
+      dpv.hidden = false;
+      dpv.innerHTML = '<b>' + (pf || 'Emas digital') + ' · ' + grams(dg) + '</b>' + (state.price ? '<br>Nilai pasar ≈ <b>' + rp(dg * valuePrice(dk)) + '</b><br><span class="small">Jika dijual ≈ ' + rp(dg * sellPrice(dk)) + '</span>' : '');
+      return;
+    }
     var b = normalizeBrand($('inBrand').value), list = allPieces() || pieces;
     var n = list.length, total = list.reduce(function (a, g) { return a + g; }, 0), pv = $('addPreview');
     $('btnSaveAdd').textContent = n ? 'Simpan ' + n + ' keping' : 'Simpan';
@@ -880,9 +1019,11 @@
     pieces = [];
     $('inBrand').value = presetBrand || '';
     $('inGram').value = '';
-    showErr('brandErr', 'inBrand', ''); showErr('gramErr', 'inGram', '');
-    renderAdd();
-    openSheet('sheetAdd', opener, presetBrand ? $('inGram') : $('inBrand'));
+    $('inPlatform').value = ''; $('inDigiGram').value = ''; $('inNote').value = '';
+    ['brandErr:inBrand', 'gramErr:inGram', 'platformErr:inPlatform', 'digiGramErr:inDigiGram'].forEach(function (x) { var a = x.split(':'); showErr(a[0], a[1], ''); });
+    setRadio('kind', 'physical');
+    syncKind();
+    openSheet('sheetAdd', opener, presetBrand ? $('inGram') : null);
   }
   $('btnAdd').addEventListener('click', function () { openAdd('', this); });
   $('brandChips').addEventListener('click', function (e) {
@@ -909,6 +1050,16 @@
   $('inBrand').addEventListener('input', function () { showErr('brandErr', 'inBrand', ''); renderAdd(); });
   $('inGram').addEventListener('input', function () { showErr('gramErr', 'inGram', ''); updateAddPreview(); });
   $('btnSaveAdd').addEventListener('click', function () {
+    if (addKind() === 'digital') {
+      var pf = normalizePlatform($('inPlatform').value), dg = parseNum($('inDigiGram').value);
+      if (!pf) { showErr('platformErr', 'inPlatform', 'Isi nama aplikasi emas digital.'); $('inPlatform').focus(); return; }
+      if (!(dg > 0) || dg > 100000) { showErr('digiGramErr', 'inDigiGram', 'Isi saldo dalam gram, lebih dari 0. Contoh: 1,2345'); $('inDigiGram').focus(); return; }
+      var note = $('inNote').value.trim();
+      state.items.push({ id: newId(0), kind: 'digital', brand: pf, gram: dg, note: note, added: new Date().toISOString() });
+      recordHistory(); saveState(); closeSheet(); render();
+      toast('Saldo ' + pf + ' (' + grams(dg) + ') dicatat');
+      return;
+    }
     var b = normalizeBrand($('inBrand').value);
     if (!b) { showErr('brandErr', 'inBrand', 'Isi merek emas dulu.'); $('inBrand').focus(); return; }
     var list = allPieces();
@@ -924,7 +1075,7 @@
   // ---------- One size of a brand ----------
   var sizeCtx = null;
   function piecesOf(brand, gram) {
-    return state.items.filter(function (it) { return it.brand === brand && gkey(it.gram) === gkey(gram); });
+    return state.items.filter(function (it) { return !isDigital(it) && it.brand === brand && gkey(it.gram) === gkey(gram); });
   }
   function renderSize() {
     var c = sizeCtx, n = c.count;
@@ -981,12 +1132,56 @@
     });
   });
   function cleanupBrands() {
-    var used = {};
-    state.items.forEach(function (it) { used[it.brand] = 1; });
+    var used = {}, usedPhys = {};
+    state.items.forEach(function (it) { used[pkey(it)] = 1; if (!isDigital(it)) usedPhys[it.brand] = 1; });
     Object.keys(state.brands).forEach(function (b) { if (!used[b]) delete state.brands[b]; });
-    Object.keys(ui.open).forEach(function (b) { if (!used[b]) delete ui.open[b]; });
+    Object.keys(ui.open).forEach(function (b) { if (!usedPhys[b]) delete ui.open[b]; });
     saveUi();
   }
+
+  var digiId = null;
+  function digiItem() { return state.items.filter(function (it) { return it.id === digiId; })[0]; }
+  function updateDigiPreview() {
+    var pf = normalizePlatform($('edPlatform').value), g = parseNum($('edGram').value), k = 'd:' + pf, it = digiItem();
+    $('digiPreview').innerHTML = (g > 0 ? '<b>' + grams(g) + '</b>' + (state.price ? '<br>Nilai pasar ≈ <b>' + rp(g * valuePrice(k)) + '</b><br><span class="small">Jika dijual ≈ ' + rp(g * sellPrice(k)) + '</span>' : '') : '<span class="small">Isi saldo untuk melihat perkiraan.</span>') +
+      (it ? '<br><span class="small">Dicatat ' + dateShort(it.added) + (it.updated ? ' · diperbarui ' + dateShort(it.updated) : '') + '</span>' : '');
+  }
+  function openDigi(id, opener) {
+    digiId = id;
+    var it = digiItem(); if (!it) return;
+    $('digiSheetTitle').textContent = it.brand;
+    $('edPlatform').value = it.brand;
+    $('edGram').value = num(it.gram, 4);
+    $('edNote').value = it.note || '';
+    showErr('edPlatformErr', 'edPlatform', ''); showErr('edGramErr', 'edGram', '');
+    updateDigiPreview();
+    openSheet('sheetDigi', opener, $('edGram'));
+  }
+  ['edPlatform', 'edGram'].forEach(function (id) { $(id).addEventListener('input', function () { showErr(id + 'Err', id, ''); updateDigiPreview(); }); });
+  $('btnSaveDigi').addEventListener('click', function () {
+    var it = digiItem(); if (!it) return;
+    var pf = normalizePlatform($('edPlatform').value), g = parseNum($('edGram').value);
+    if (!pf) { showErr('edPlatformErr', 'edPlatform', 'Isi nama aplikasi emas digital.'); $('edPlatform').focus(); return; }
+    if (!(g > 0) || g > 100000) { showErr('edGramErr', 'edGram', 'Isi saldo dalam gram, lebih dari 0. Untuk saldo nol, gunakan Hapus akun.'); $('edGram').focus(); return; }
+    var oldKey = pkey(it);
+    it.brand = pf; it.gram = g; it.note = $('edNote').value.trim(); it.updated = new Date().toISOString();
+    // carry price settings over when the app is renamed and no other account uses the old name
+    var nk = pkey(it);
+    if (nk !== oldKey && state.brands[oldKey] && !state.brands[nk]) state.brands[nk] = state.brands[oldKey];
+    cleanupBrands(); recordHistory(); saveState(); closeSheet(); render();
+    toast('Saldo ' + pf + ' diperbarui: ' + grams(g));
+  });
+  $('btnDigiDelete').addEventListener('click', function () {
+    var it = digiItem(); if (!it) return;
+    confirmDialog('Hapus akun emas digital?', 'Catatan saldo ' + it.brand + (it.note ? ' (' + it.note + ')' : '') + ' sebesar ' + grams(it.gram) + ' akan dihapus dari aplikasi ini.', 'Hapus').then(function (ok) {
+      if (!ok) return;
+      state.items = state.items.filter(function (x) { return x.id !== it.id; });
+      cleanupBrands(); recordHistory(); saveState(); closeSheet(); render(); toast('Akun ' + it.brand + ' dihapus');
+    });
+  });
+  $('btnDigiPrice').addEventListener('click', function () {
+    var it = digiItem(); if (it) openBrand(pkey(it), this, it.brand);
+  });
 
   // ---------- Brand price settings ----------
   var editingBrand = null;
@@ -1015,7 +1210,8 @@
     var cfg = draftCfg(), sc = draftSell(), spot = spotNow();
     var vpg = (cfg.mode === 'manual' && !(cfg.manual > 0)) || (cfg.mode === 'pct' && !isFinite(cfg.pct)) ? 0 : valuePrice(editingBrand, cfg, spot);
     var spg = (sc.mode === 'manual' && !(sc.manual > 0)) || (sc.mode === 'pct' && !isFinite(sc.pct)) ? 0 : sellPrice(editingBrand, sc, spot);
-    var g = groupByBrand().filter(function (x) { return x.brand === editingBrand; })[0];
+    var g = { gram: sumGram(state.items.filter(function (it) { return pkey(it) === editingBrand; })) };
+    if (!g.gram) g = null;
     $('brandPreview').innerHTML =
       (vpg ? 'Nilai pasar: <b>' + rp(vpg) + '/gram</b>' + (g ? ' <span class="small">(' + grams(g.gram) + ' = ' + rp(g.gram * vpg) + ')</span>' : '') : '<span class="small">Lengkapi isian nilai pasar.</span>') + '<br>' +
       (spg ? 'Jual kembali ≈ <b>' + rp(spg) + '/gram</b>' + (g ? ' <span class="small">(' + grams(g.gram) + ' = ' + rp(g.gram * spg) + ')</span>' : '') : '<span class="small">Lengkapi isian harga jual kembali.</span>');
@@ -1029,15 +1225,18 @@
       updateBrandPreview();
     });
   });
-  function openBrand(name, opener) {
-    editingBrand = name;
-    var cfg = brandCfg(name), sc = sellCfg(name), dp = SELL_DEFAULT_PCT[name];
-    $('brandTitle').textContent = 'Harga ' + name;
+  function openBrand(key, opener, label) {
+    editingBrand = key;
+    var name = label || key, digital = key.indexOf('d:') === 0;
+    var cfg = brandCfg(key), sc = sellCfg(key), dp = SELL_DEFAULT_PCT[key];
+    $('brandTitle').textContent = 'Harga ' + name + (digital ? ' (digital)' : '');
     $('inPct').value = cfg.mode === 'pct' ? num(cfg.pct, 2) : '';
     $('inManual').value = cfg.mode === 'manual' ? Math.round(cfg.manual).toLocaleString('id-ID') : '';
     $('inSellPct').value = sc.mode === 'pct' ? num(sc.pct, 2) : '';
     $('inSellManual').value = sc.mode === 'manual' ? Math.round(sc.manual).toLocaleString('id-ID') : '';
-    $('sellDefaultHint').innerHTML = dp != null
+    $('sellDefaultHint').innerHTML = digital
+      ? ('Default: sama dengan spot. Di aplikasi emas digital, harga jual biasanya beberapa persen di bawah harga beli. Untuk angka paling akurat, pilih <b>Manual</b> dan salin <b>harga jual</b> per gram dari aplikasi ' + esc(name) + '.')
+      : dp != null
       ? ('Default ' + esc(name) + ': spot ' + (dp >= 0 ? '+' : '') + num(dp, 2) + '% (dari harga buyback resmi ' + SELL_DEFAULT_ASOF + '). Harga buyback berubah setiap hari; untuk angka paling akurat pilih <b>Manual</b>.')
       : ('Default: sama dengan spot (belum ada data buyback untuk ' + esc(name) + '). Pilih <b>Manual</b> atau <b>Spot ± %</b>. Perhiasan biasanya dibeli kembali jauh di bawah spot.');
     setRadio('vmode', cfg.mode || 'spot'); setRadio('smode', sc.mode || 'default');
@@ -1055,7 +1254,8 @@
     if (sc.mode !== 'default') cfg.sell = sc;
     if (cfg.mode === 'spot' && !cfg.sell) delete state.brands[editingBrand]; else state.brands[editingBrand] = cfg;
     recordHistory(); saveState(); closeSheet(); render();
-    toast('Harga ' + editingBrand + ' disimpan');
+    if ($('sheetDigi').classList.contains('open')) updateDigiPreview();
+    toast('Harga ' + editingBrand.replace(/^d:/, '') + ' disimpan');
   });
 
   // ---------- Backup ----------
@@ -1076,9 +1276,11 @@
     try { d = JSON.parse($('inBackup').value); } catch (e) { d = null; }
     if (!d || !Array.isArray(d.items)) { showErr('backupErr', null, 'Format data cadangan tidak valid.'); return; }
     var items = d.items.filter(function (x) { return x && x.brand && Number(x.gram) > 0; }).map(function (x, i) {
-      return { id: String(x.id || newId(i)), brand: String(x.brand), gram: Number(x.gram), added: x.added || new Date().toISOString() };
+      var it = { id: String(x.id || newId(i)), brand: String(x.brand), gram: Number(x.gram), added: x.added || new Date().toISOString() };
+      if (x.kind === 'digital') { it.kind = 'digital'; it.note = String(x.note || ''); if (x.updated) it.updated = x.updated; }
+      return it;
     });
-    confirmDialog('Pulihkan data?', 'Semua data sekarang akan diganti dengan ' + items.length + ' keping dari cadangan.', 'Pulihkan').then(function (ok) {
+    confirmDialog('Pulihkan data?', 'Semua data sekarang akan diganti dengan ' + items.length + ' catatan dari cadangan.', 'Pulihkan').then(function (ok) {
       if (!ok) return;
       state.items = items;
       state.brands = (d.brands && typeof d.brands === 'object') ? d.brands : {};
