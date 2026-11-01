@@ -15,6 +15,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -36,7 +37,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "catatemas";
     private static final String KEY_DATA = "data";
 
-    private static final int BG = Color.parseColor("#FAF8F3");
+    private static final int BG = Color.parseColor("#0F0B04");
 
     private WebView webView;
     private View bottomSpacer;
@@ -69,6 +70,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         webView.setWebViewClient(new WebViewClient());
+        webView.setWebChromeClient(new WebChromeClient()); // lets JS dialogs work if ever used
         webView.addJavascriptInterface(new Bridge(), "Native");
         setContentView(root);
         // Must run after setContentView: the window's decor view (and its insets controller) exists only then.
@@ -94,16 +96,14 @@ public class MainActivity extends Activity {
             w.setDecorFitsSystemWindows(false);
             WindowInsetsController c = w.getDecorView().getWindowInsetsController();
             if (c != null) {
-                // Light (white) status bar icons over the gold header, dark navigation icons over the light page.
-                c.setSystemBarsAppearance(WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                // Dark UI: light (white) icons on both the status bar and the navigation bar.
+                c.setSystemBarsAppearance(0,
                         WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS | WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
             }
         } else {
             int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                     | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-            if (Build.VERSION.SDK_INT >= 27) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            else w.setNavigationBarColor(Color.BLACK); // API 26 cannot draw dark nav icons
             w.getDecorView().setSystemUiVisibility(flags);
         }
     }
